@@ -1,0 +1,42 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://visualsentinel.com/api",
+      "service-desc": [
+        {
+          "href": "https://raw.githubusercontent.com/VisualSentinel/openapi/main/openapi.json",
+          "type": "application/json"
+        },
+        {
+          "href": "https://raw.githubusercontent.com/VisualSentinel/openapi/main/openapi.yaml",
+          "type": "application/yaml"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://visualsentinel.com/docs",
+          "type": "text/html"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://visualsentinel.com/api/health",
+          "type": "application/json"
+        }
+      ],
+      "terms-of-service": [
+        {
+          "href": "https://visualsentinel.com/terms",
+          "type": "text/html"
+        }
+      ],
+      "license": [
+        {
+          "href": "https://github.com/VisualSentinel/openapi/blob/main/LICENSE",
+          "type": "text/plain",
+          "title": "MIT"
+        }
+      ]
+    }
+  ]
+}

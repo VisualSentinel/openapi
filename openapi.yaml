@@ -1,0 +1,4101 @@
+openapi: 3.1.0
+info:
+  title: Visual Sentinel Public API
+  description: 'Comprehensive website monitoring API with 6-layer monitoring: Uptime, Performance, SSL, DNS, Visual regression
+    detection, and Content change detection.
+
+
+    ## Authentication
+
+
+    Every endpoint below accepts two authentication methods interchangeably (unified auth, as of 2.25.0):
+
+
+    ### 1. Session Cookie (Web Clients)
+
+    Call `POST /api/auth/login` with email + password to get a session cookie. The cookie is automatically sent with subsequent
+    requests. Session writes are CSRF-protected (send `X-CSRF-Token` on POST/PUT/PATCH/DELETE).
+
+
+    ### 2. Bearer API Key (Agents, Integrations, Mobile Apps, Scripts)
+
+    Generate an API key in **Settings > API Keys**. Send it via any of:
+
+    - `Authorization: Bearer vs_xxxxx` header (recommended)
+
+    - `X-API-Key: vs_xxxxx` header
+
+    - `?api_key=vs_xxxxx` query parameter
+
+
+    API keys enforce scopes automatically:
+
+    - GET requests require `{resource}:read` scope
+
+    - POST/PUT/PATCH/DELETE require `{resource}:write` scope
+
+    - Wildcard (`*`) grants full access
+
+    - Platform-admin endpoints under `/api/admin/*` are blocked for API keys regardless of scope
+
+    - CSRF is skipped for Bearer-auth''d requests (mobile-friendly)
+
+
+    Resources: `monitors`, `servers`, `channels`, `alerts`, `incidents`, `status-pages`, `teams`, `organization`, `maintenance`,
+    `analytics`, `billing`, `user`
+
+
+    ### Session-only endpoints (cookie required)
+
+    The following endpoints stay session-only by design and cannot be called with an API key:
+
+    - `/api/auth/*` (login, logout, refresh, 2FA, password reset, OAuth)
+
+    - `/api/billing/checkout` (dual-path: authed upgrade OR anonymous signup)
+
+    - `/api/integrations/slack/auth` (OAuth init redirect)
+
+    - `/api/organization/invitations/accept` (email-link flow)
+
+    - `/api/user/delete-account` (destructive, blast-radius guardrail)
+
+    - `/api/user/organizations/switch` (mutates session cookie)
+
+    - `/api/chat/*`, `/api/ai/*`, `/api/incidents/:id/summarize`, `/api/reports/digest` (AI-powered features, not exposed
+    via API keys due to token costs and abuse potential)
+
+
+    **Note:** API access requires the Business plan or higher.
+
+
+    ## Mobile apps (iOS, Android, Mac)
+
+
+    Native apps can use the same login flow: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <jwt>`
+    on every subsequent request. CSRF is automatically skipped for Bearer tokens. Token refresh is via `POST /api/auth/refresh`
+    with the refresh token in the request body (or `X-Client-Type: mobile` header).
+
+
+    ## Rate Limits
+
+
+    - Login: 5 attempts per 15 minutes
+
+    - Registration: 3 per hour
+
+    - Monitor creation: 20 per hour
+
+    - Alert rules: 10 per hour
+
+    - Bulk operations: 10 per minute
+
+    - Tools (public): 10 per minute per IP
+
+    - API key requests: per-key rate limit (default 1000/hour, configurable at key creation)
+
+
+    ## Base URL
+
+
+    Production: `https://visualsentinel.com`'
+  version: 2.25.1
+  contact:
+    name: Visual Sentinel Support
+    url: https://visualsentinel.com/contact
+    email: support@visualsentinel.com
+  license:
+    name: MIT
+    url: https://github.com/VisualSentinel/openapi/blob/main/LICENSE
+  x-logo:
+    url: https://visualsentinel.com/icon-512.png
+    altText: Visual Sentinel
+servers:
+- url: https://visualsentinel.com
+  description: Production server
+tags:
+- name: System
+  description: Health checks, metrics, and system status
+- name: Authentication
+  description: User authentication, sessions, OAuth, and 2FA
+- name: Monitors
+  description: Website and endpoint monitoring CRUD and operations
+- name: Visual Monitoring
+  description: Screenshot-based visual regression detection
+- name: Servers
+  description: Server infrastructure monitoring via agent
+- name: Server Alerts
+  description: Server alert history and configuration
+- name: Notification Channels
+  description: Manage notification destinations (email, Slack, Discord, etc.)
+- name: Alerts
+  description: Alert management, acknowledgment, and resolution
+- name: Alert Rules
+  description: Configure alerting conditions and thresholds
+- name: Alert Groups
+  description: Grouped alert management
+- name: Incidents
+  description: Incident tracking and management
+- name: Status Pages
+  description: Public status page management
+- name: Teams
+  description: Team management and member assignment
+- name: Organization
+  description: Organization settings, members, invitations, and branding
+- name: Maintenance
+  description: Scheduled maintenance windows
+- name: Billing
+  description: Subscription management and checkout
+- name: Integrations
+  description: Third-party integrations (Slack, Discord, PagerDuty, webhooks, Google)
+- name: Tools
+  description: Free public website checking tools
+- name: Reports
+  description: Report generation and digest emails
+- name: Analytics
+  description: Analytics, journeys, and subscription events
+- name: Notifications
+  description: In-app notification management
+- name: User
+  description: User profile and preferences
+- name: Chat
+  description: AI chat support system
+- name: Onboarding
+  description: User onboarding flow
+- name: Settings
+  description: Application settings (deduplication, reports)
+- name: Public
+  description: Unauthenticated public endpoints (blog, status pages, stats)
+- name: Webhooks
+  description: Incoming webhook handlers (Paddle, WhatsApp)
+- name: API Keys
+  description: API key management
+paths:
+  /api/health:
+    get:
+      tags:
+      - System
+      summary: Health check
+      description: Returns system health status including database, Redis, and worker connectivity.
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/metrics:
+    get:
+      tags:
+      - System
+      summary: Prometheus metrics
+      description: Get metrics in Prometheus format for external monitoring systems.
+      operationId: getMetrics
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Invalid or missing API key
+  /api/plan:
+    get:
+      tags:
+      - System
+      summary: Get current plan details
+      description: Returns the current organization's plan, limits, and usage.
+      operationId: getPlan
+      responses:
+        '200':
+          description: Plan details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: string
+                  limits:
+                    type: object
+                  usage:
+                    type: object
+  /api/dns:
+    get:
+      tags:
+      - System
+      summary: DNS lookup
+      description: Perform a DNS lookup for a given domain.
+      operationId: dnsLookup
+      parameters:
+      - name: domain
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: DNS records
+  /api/monitors:
+    get:
+      tags:
+      - Monitors
+      summary: List monitors
+      description: Get all monitors for the current organization with pagination and filtering.
+      operationId: listMonitors
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - all
+          - operational
+          - degraded
+          - down
+          - pending
+      - name: type
+        in: query
+        schema:
+          $ref: '#/components/schemas/MonitorType'
+      - name: enabled
+        in: query
+        schema:
+          type: boolean
+      - name: search
+        in: query
+        schema:
+          type: string
+        description: Search by name or URL
+      - name: tags
+        in: query
+        schema:
+          type: string
+        description: Comma-separated list of tags
+      - name: sortBy
+        in: query
+        schema:
+          type: string
+          enum:
+          - createdAt
+          - name
+          - status
+          - uptime
+          default: createdAt
+      - name: sortOrder
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+      responses:
+        '200':
+          description: List of monitors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorListResponse'
+    post:
+      tags:
+      - Monitors
+      summary: Create monitor
+      description: Create a new website or endpoint monitor.
+      operationId: createMonitor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMonitorRequest'
+      responses:
+        '201':
+          description: Monitor created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          description: Validation error
+        '402':
+          description: Plan limit reached
+    delete:
+      tags:
+      - Monitors
+      summary: Bulk delete monitors
+      description: Delete multiple monitors at once.
+      operationId: bulkDeleteMonitors
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Monitors deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
+  /api/monitors/{id}:
+    get:
+      tags:
+      - Monitors
+      summary: Get monitor
+      description: Get detailed information about a specific monitor.
+      operationId: getMonitor
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Monitor details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '404':
+          description: Monitor not found
+    put:
+      tags:
+      - Monitors
+      summary: Update monitor
+      description: Update an existing monitor's configuration.
+      operationId: updateMonitor
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMonitorRequest'
+      responses:
+        '200':
+          description: Monitor updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+    delete:
+      tags:
+      - Monitors
+      summary: Delete monitor
+      description: Permanently delete a monitor and all its data.
+      operationId: deleteMonitor
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Monitor deleted
+  /api/monitors/{id}/check:
+    post:
+      tags:
+      - Monitors
+      summary: Trigger manual check
+      description: Manually trigger a monitor check and get immediate results.
+      operationId: triggerCheck
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResult'
+  /api/monitors/{id}/checks:
+    get:
+      tags:
+      - Monitors
+      summary: Get check history
+      description: Get recent check results for a monitor with timing breakdown (DNS, connect, TLS, TTFB). Supports time range
+        filtering and optional response body inclusion for API monitors.
+      operationId: getMonitorChecks
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 500
+        description: Number of checks to return
+      - name: timeRange
+        in: query
+        schema:
+          type: string
+          enum:
+          - 1h
+          - 6h
+          - 24h
+          - 7d
+          - 30d
+          default: 24h
+        description: Time range to fetch checks for
+      - name: includeBody
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include response body (API monitors only, increases payload size)
+      responses:
+        '200':
+          description: Check history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                          - SUCCESS
+                          - FAILURE
+                          - TIMEOUT
+                          - ERROR
+                        statusCode:
+                          type:
+                          - integer
+                          - 'null'
+                        responseTime:
+                          type:
+                          - number
+                          - 'null'
+                          description: Total response time in ms
+                        error:
+                          type:
+                          - string
+                          - 'null'
+                        createdAt:
+                          type: string
+                          format: date-time
+                        assertionResults:
+                          description: API assertion results if configured
+                        responseBody:
+                          type:
+                          - string
+                          - 'null'
+                          description: Only included when includeBody=true
+                        firstByteTime:
+                          type:
+                          - number
+                          - 'null'
+                          description: Time to first byte in ms
+                        dnsTime:
+                          type:
+                          - number
+                          - 'null'
+                          description: DNS resolution time in ms
+                        connectTime:
+                          type:
+                          - number
+                          - 'null'
+                          description: TCP connection time in ms
+                        tlsTime:
+                          type:
+                          - number
+                          - 'null'
+                          description: TLS handshake time in ms
+        '404':
+          description: Monitor not found
+        '503':
+          description: Database unavailable
+  /api/monitors/{id}/uptime:
+    get:
+      tags:
+      - Monitors
+      summary: Get uptime statistics
+      description: Get uptime percentage and history for a monitor.
+      operationId: getUptime
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - 24h
+          - 7d
+          - 30d
+          - 90d
+          default: 24h
+      responses:
+        '200':
+          description: Uptime statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UptimeResponse'
+  /api/monitors/{id}/response-time:
+    get:
+      tags:
+      - Monitors
+      summary: Get response time metrics
+      description: Get response time history and statistics.
+      operationId: getResponseTime
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - 1h
+          - 24h
+          - 7d
+          - 30d
+          default: 24h
+      responses:
+        '200':
+          description: Response time metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseTimeResponse'
+  /api/monitors/{id}/dns:
+    get:
+      tags:
+      - Monitors
+      summary: Get DNS records
+      description: Get DNS record details for a monitor's domain.
+      operationId: getMonitorDns
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: DNS records for the monitor's domain
+  /api/monitors/{id}/pagespeed:
+    get:
+      tags:
+      - Monitors
+      summary: Get PageSpeed data
+      description: Get cached PageSpeed Insights data for a monitor.
+      operationId: getMonitorPagespeed
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: PageSpeed results
+    post:
+      tags:
+      - Monitors
+      summary: Trigger PageSpeed check
+      description: Trigger a fresh PageSpeed Insights analysis.
+      operationId: triggerMonitorPagespeed
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: PageSpeed analysis triggered
+  /api/monitors/{id}/snapshots:
+    get:
+      tags:
+      - Monitors
+      summary: Get content snapshots
+      description: Get content change detection snapshots for a monitor.
+      operationId: getMonitorSnapshots
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Content snapshots
+  /api/monitors/{id}/channels:
+    get:
+      tags:
+      - Monitors
+      summary: Get monitor notification channels
+      description: Get notification channels assigned to a specific monitor.
+      operationId: getMonitorChannels
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Assigned notification channels
+    put:
+      tags:
+      - Monitors
+      summary: Update monitor notification channels
+      description: Set which notification channels are assigned to a monitor.
+      operationId: updateMonitorChannels
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channelIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Channels updated
+  /api/monitors/{id}/anomalies:
+    get:
+      tags:
+      - Monitors
+      summary: Get anomalies
+      description: Get detected anomalies for a monitor.
+      operationId: getMonitorAnomalies
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Anomaly data
+    post:
+      tags:
+      - Monitors
+      summary: Create anomaly
+      description: Manually create an anomaly record for a monitor.
+      operationId: createMonitorAnomaly
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '201':
+          description: Anomaly created
+    patch:
+      tags:
+      - Monitors
+      summary: Update anomaly
+      description: Update or acknowledge an anomaly.
+      operationId: updateMonitorAnomaly
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Anomaly updated
+  /api/monitors/{id}/report:
+    get:
+      tags:
+      - Monitors
+      summary: Get monitor report
+      description: Get a comprehensive report for a monitor.
+      operationId: getMonitorReport
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Monitor report data
+    put:
+      tags:
+      - Monitors
+      summary: Update monitor report settings
+      description: Update report generation settings for a monitor.
+      operationId: updateMonitorReport
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Report settings updated
+    post:
+      tags:
+      - Monitors
+      summary: Generate monitor report
+      description: Trigger generation of a new report for a monitor.
+      operationId: generateMonitorReport
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Report generated
+  /api/monitors/{id}/sub-pages:
+    get:
+      tags:
+      - Monitors
+      summary: List sub-pages
+      description: Get all sub-pages configured for visual monitoring on this monitor.
+      operationId: listSubPages
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: List of sub-pages
+    post:
+      tags:
+      - Monitors
+      summary: Add sub-page
+      description: Add a new sub-page for visual monitoring.
+      operationId: addSubPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - path
+              properties:
+                path:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Sub-page added
+    put:
+      tags:
+      - Monitors
+      summary: Update sub-page
+      description: Update a sub-page configuration.
+      operationId: updateSubPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Sub-page updated
+    delete:
+      tags:
+      - Monitors
+      summary: Delete sub-page
+      description: Remove a sub-page from visual monitoring.
+      operationId: deleteSubPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Sub-page deleted
+  /api/monitors/{id}/sub-pages/{subPageId}/capture:
+    post:
+      tags:
+      - Visual Monitoring
+      summary: Capture sub-page screenshot
+      description: Capture a baseline screenshot for a sub-page.
+      operationId: captureSubPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: subPageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Screenshot captured
+  /api/monitors/{id}/sub-pages/{subPageId}/visual:
+    get:
+      tags:
+      - Visual Monitoring
+      summary: Get sub-page visual data
+      description: Get visual monitoring data for a specific sub-page.
+      operationId: getSubPageVisual
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: subPageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Sub-page visual data
+  /api/monitors/{id}/visual:
+    get:
+      tags:
+      - Visual Monitoring
+      summary: Get visual monitoring data
+      description: Get visual monitoring history and screenshots.
+      operationId: getVisualData
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Visual monitoring data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisualDataResponse'
+  /api/monitors/{id}/visual/capture:
+    post:
+      tags:
+      - Visual Monitoring
+      summary: Capture screenshot
+      description: Capture a new screenshot for visual comparison.
+      operationId: captureScreenshot
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Screenshot captured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  screenshotUrl:
+                    type: string
+  /api/monitors/{id}/visual/baseline:
+    post:
+      tags:
+      - Visual Monitoring
+      summary: Set visual baseline
+      description: Set the current screenshot as the baseline for visual comparisons.
+      operationId: setVisualBaseline
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Baseline set
+  /api/monitors/{id}/visual/compare:
+    post:
+      tags:
+      - Visual Monitoring
+      summary: Compare visual snapshots
+      description: Compare two visual snapshots and return diff percentage.
+      operationId: compareVisual
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Comparison result with diff percentage
+  /api/monitors/{id}/visual/delete:
+    post:
+      tags:
+      - Visual Monitoring
+      summary: Delete visual snapshots (POST)
+      description: Delete specific visual snapshots by IDs.
+      operationId: deleteVisualSnapshotsPost
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Snapshots deleted
+    delete:
+      tags:
+      - Visual Monitoring
+      summary: Delete visual snapshots
+      description: Delete visual monitoring data.
+      operationId: deleteVisualSnapshots
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Snapshots deleted
+    get:
+      tags:
+      - Visual Monitoring
+      summary: Get deletable snapshots
+      description: List visual snapshots that can be deleted.
+      operationId: getDeletableSnapshots
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: List of deletable snapshots
+  /api/monitors/alert-settings:
+    get:
+      tags:
+      - Monitors
+      summary: Get monitor alert settings
+      description: Get alert settings for all monitors in the organization.
+      operationId: getMonitorAlertSettings
+      responses:
+        '200':
+          description: Monitor alert settings
+  /api/monitors/bulk-alerts:
+    put:
+      tags:
+      - Monitors
+      summary: Bulk update monitor alerts
+      description: Update alert settings for multiple monitors at once.
+      operationId: bulkUpdateAlerts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                monitorIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                channelIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Alert settings updated
+  /api/monitors/check:
+    post:
+      tags:
+      - Monitors
+      summary: Bulk check monitors
+      description: Trigger checks for multiple monitors.
+      operationId: bulkCheckMonitors
+      responses:
+        '200':
+          description: Checks triggered
+  /api/monitors/content:
+    post:
+      tags:
+      - Monitors
+      summary: Content change detection
+      description: Check content changes for a URL.
+      operationId: checkContent
+      responses:
+        '200':
+          description: Content check result
+  /api/monitors/export:
+    get:
+      tags:
+      - Monitors
+      summary: Export monitors
+      description: Export all monitors data as CSV or JSON.
+      operationId: exportMonitors
+      parameters:
+      - name: format
+        in: query
+        schema:
+          type: string
+          enum:
+          - csv
+          - json
+          default: csv
+      responses:
+        '200':
+          description: Exported monitor data
+  /api/monitors/test:
+    post:
+      tags:
+      - Monitors
+      summary: Test monitor URL
+      description: Test a URL before creating a monitor to verify it's reachable.
+      operationId: testMonitor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Test result
+  /api/monitor-check:
+    post:
+      tags:
+      - Monitors
+      summary: Worker monitor check
+      description: Internal endpoint used by the worker to report check results.
+      operationId: workerMonitorCheck
+      responses:
+        '200':
+          description: Check recorded
+    get:
+      tags:
+      - Monitors
+      summary: Get monitor check queue status
+      description: Get the status of the monitor check queue.
+      operationId: getMonitorCheckQueue
+      responses:
+        '200':
+          description: Queue status
+  /api/servers:
+    get:
+      tags:
+      - Servers
+      summary: List servers
+      description: Get all servers for the organization.
+      operationId: listServers
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of servers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerListResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Server monitoring not available on current plan or missing servers:read scope
+    post:
+      tags:
+      - Servers
+      summary: Create server
+      description: Register a new server for monitoring. Returns the server token for agent installation.
+      operationId: createServer
+      security:
+      - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                hostname:
+                  type: string
+                ipAddress:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Server created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server:
+                    $ref: '#/components/schemas/Server'
+                  token:
+                    type: string
+                    description: Agent authentication token (shown only once)
+        '402':
+          description: Server limit reached
+  /api/servers/{id}:
+    get:
+      tags:
+      - Servers
+      summary: Get server details
+      description: Get detailed information about a specific server including recent metrics and top processes.
+      operationId: getServer
+      security:
+      - ApiKeyAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Server details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server:
+                    $ref: '#/components/schemas/Server'
+        '404':
+          description: Server not found
+    patch:
+      tags:
+      - Servers
+      summary: Update server
+      description: Update server name, tags, or alert configuration.
+      operationId: updateServer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                alertConfig:
+                  type: object
+      responses:
+        '200':
+          description: Server updated
+    delete:
+      tags:
+      - Servers
+      summary: Delete server
+      description: Remove a server and all its monitoring data.
+      operationId: deleteServer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Server deleted
+  /api/servers/{id}/metrics:
+    get:
+      tags:
+      - Servers
+      summary: Get server metrics
+      description: Get historical server metrics (CPU, memory, disk, network) with configurable time periods.
+      operationId: getServerMetrics
+      security:
+      - ApiKeyAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - 1h
+          - 6h
+          - 24h
+          - 7d
+          - 30d
+          default: 1h
+      responses:
+        '200':
+          description: Server metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerMetricsResponse'
+        '404':
+          description: Server not found
+  /api/servers/{id}/alerts:
+    get:
+      tags:
+      - Server Alerts
+      summary: Get server alert history
+      description: Get historical alerts for a specific server (CPU, memory, disk threshold breaches, offline events).
+      operationId: getServerAlerts
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+          maximum: 200
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+      responses:
+        '200':
+          description: Server alert history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerAlertListResponse'
+        '404':
+          description: Server not found
+  /api/servers/agent/install.sh:
+    get:
+      tags:
+      - Servers
+      summary: Get agent install script
+      description: Download the server monitoring agent installation shell script.
+      operationId: getAgentInstallScript
+      security: []
+      parameters:
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Shell script
+          content:
+            text/x-shellscript:
+              schema:
+                type: string
+  /api/servers/agent/report:
+    post:
+      tags:
+      - Servers
+      summary: Agent metrics report
+      description: Endpoint for the server agent to submit metrics data. Authenticated via server token.
+      operationId: agentReport
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                cpu:
+                  type: object
+                memory:
+                  type: object
+                disk:
+                  type: object
+                network:
+                  type: object
+                processes:
+                  type: array
+      responses:
+        '200':
+          description: Metrics recorded
+        '401':
+          description: Invalid server token
+  /api/notification-channels:
+    get:
+      tags:
+      - Notification Channels
+      summary: List notification channels
+      description: Get all notification channels for the organization.
+      operationId: listNotificationChannels
+      responses:
+        '200':
+          description: List of notification channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationChannel'
+    post:
+      tags:
+      - Notification Channels
+      summary: Create notification channel
+      description: Create a new notification channel (Email, Slack, Discord, Telegram, WhatsApp, SMS, PagerDuty, Webhook,
+        Microsoft Teams, Push).
+      operationId: createNotificationChannel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotificationChannelRequest'
+      responses:
+        '201':
+          description: Channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationChannel'
+  /api/notification-channels/{id}:
+    get:
+      tags:
+      - Notification Channels
+      summary: Get notification channel
+      description: Get details of a specific notification channel.
+      operationId: getNotificationChannel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Channel details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationChannel'
+    put:
+      tags:
+      - Notification Channels
+      summary: Update notification channel
+      description: Update an existing notification channel.
+      operationId: updateNotificationChannel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotificationChannelRequest'
+      responses:
+        '200':
+          description: Channel updated
+    patch:
+      tags:
+      - Notification Channels
+      summary: Toggle notification channel
+      description: Enable or disable a notification channel.
+      operationId: toggleNotificationChannel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Channel toggled
+    delete:
+      tags:
+      - Notification Channels
+      summary: Delete notification channel
+      description: Delete a notification channel.
+      operationId: deleteNotificationChannel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Channel deleted
+  /api/notification-channels/{id}/test:
+    post:
+      tags:
+      - Notification Channels
+      summary: Test notification channel
+      description: Send a test notification to verify the channel is configured correctly.
+      operationId: testNotificationChannel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Test notification sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+  /api/push-subscriptions:
+    get:
+      tags:
+      - Notification Channels
+      summary: List push subscriptions
+      description: List all browser push notification subscriptions for the current organization.
+      operationId: listPushSubscriptions
+      responses:
+        '200':
+          description: Push subscriptions list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        channelId:
+                          type: string
+                          format: uuid
+                        channelName:
+                          type: string
+                        endpoint:
+                          type: string
+                          format: uri
+                        name:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        userId:
+                          type: string
+                          format: uuid
+    post:
+      tags:
+      - Notification Channels
+      summary: Register push subscription
+      description: Register a browser push notification subscription. Creates a new PUSH notification channel and auto-assigns
+        it to all existing monitors. Requires write access and a plan that supports push notifications.
+      operationId: createPushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - subscription
+              properties:
+                subscription:
+                  type: object
+                  required:
+                  - endpoint
+                  - keys
+                  properties:
+                    endpoint:
+                      type: string
+                      format: uri
+                    keys:
+                      type: object
+                      required:
+                      - p256dh
+                      - auth
+                      properties:
+                        p256dh:
+                          type: string
+                        auth:
+                          type: string
+                name:
+                  type: string
+                  maxLength: 100
+                  description: Optional friendly name for this browser
+      responses:
+        '201':
+          description: Push subscription registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  channelId:
+                    type: string
+                    format: uuid
+        '400':
+          description: Validation error
+        '403':
+          description: Push notifications not available on current plan
+    delete:
+      tags:
+      - Notification Channels
+      summary: Remove push subscription
+      description: Remove a browser push subscription by endpoint URL. If it is the last subscription in its channel, the
+        entire channel is deleted.
+      operationId: deletePushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - endpoint
+              properties:
+                endpoint:
+                  type: string
+                  format: uri
+                  description: The push subscription endpoint URL to remove
+      responses:
+        '200':
+          description: Push subscription removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Validation error
+        '404':
+          description: Subscription not found
+  /api/notification-preferences:
+    get:
+      tags:
+      - Notification Channels
+      summary: Get notification preferences
+      description: Get the user's notification preferences (which event types trigger which channels).
+      operationId: getNotificationPreferences
+      responses:
+        '200':
+          description: Notification preferences
+    put:
+      tags:
+      - Notification Channels
+      summary: Update notification preferences
+      description: Update notification preferences for event types.
+      operationId: updateNotificationPreferences
+      responses:
+        '200':
+          description: Preferences updated
+  /api/alerts:
+    get:
+      tags:
+      - Alerts
+      summary: List alerts
+      description: Get all alerts with filtering and pagination.
+      operationId: listAlerts
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+          maximum: 100
+      - name: state
+        in: query
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - RESOLVED
+      - name: severity
+        in: query
+        schema:
+          type: string
+          enum:
+          - INFO
+          - WARNING
+          - CRITICAL
+      - name: monitorId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertListResponse'
+  /api/alerts/{id}/acknowledge:
+    post:
+      tags:
+      - Alerts
+      summary: Acknowledge alert
+      description: Mark an alert as acknowledged.
+      operationId: acknowledgeAlert
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+  /api/alerts/{id}/resolve:
+    post:
+      tags:
+      - Alerts
+      summary: Resolve alert
+      description: Mark an alert as resolved.
+      operationId: resolveAlert
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Alert resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+  /api/alerts/pause-all:
+    post:
+      tags:
+      - Alerts
+      summary: Pause all alerts
+      description: Pause all alerting for the organization.
+      operationId: pauseAllAlerts
+      responses:
+        '200':
+          description: All alerts paused
+    get:
+      tags:
+      - Alerts
+      summary: Get alerts paused status
+      description: Check whether all alerts are currently paused.
+      operationId: getAlertsPausedStatus
+      responses:
+        '200':
+          description: Paused status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paused:
+                    type: boolean
+  /api/alert-rules:
+    get:
+      tags:
+      - Alert Rules
+      summary: List alert rules
+      description: Get all alert rules for the organization.
+      operationId: listAlertRules
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      responses:
+        '200':
+          description: List of alert rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRuleListResponse'
+    post:
+      tags:
+      - Alert Rules
+      summary: Create alert rule
+      description: Create a new alerting rule.
+      operationId: createAlertRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRuleRequest'
+      responses:
+        '201':
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+  /api/alert-rules/{id}:
+    get:
+      tags:
+      - Alert Rules
+      summary: Get alert rule
+      description: Get details of a specific alert rule.
+      operationId: getAlertRule
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alert rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+    put:
+      tags:
+      - Alert Rules
+      summary: Update alert rule
+      description: Update an existing alert rule.
+      operationId: updateAlertRule
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRuleRequest'
+      responses:
+        '200':
+          description: Alert rule updated
+    delete:
+      tags:
+      - Alert Rules
+      summary: Delete alert rule
+      description: Delete an alert rule.
+      operationId: deleteAlertRule
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alert rule deleted
+  /api/alert-groups:
+    get:
+      tags:
+      - Alert Groups
+      summary: List alert groups
+      description: Get all alert groups for the organization.
+      operationId: listAlertGroups
+      responses:
+        '200':
+          description: List of alert groups
+  /api/alert-groups/{id}:
+    get:
+      tags:
+      - Alert Groups
+      summary: Get alert group
+      description: Get details of a specific alert group.
+      operationId: getAlertGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alert group details
+  /api/alert-groups/{id}/alerts:
+    get:
+      tags:
+      - Alert Groups
+      summary: Get alerts in group
+      description: Get all alerts belonging to a specific alert group.
+      operationId: getAlertGroupAlerts
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alerts in the group
+  /api/alert-groups/{id}/acknowledge:
+    post:
+      tags:
+      - Alert Groups
+      summary: Acknowledge alert group
+      description: Acknowledge all alerts in a group.
+      operationId: acknowledgeAlertGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alert group acknowledged
+  /api/alert-groups/{id}/resolve:
+    post:
+      tags:
+      - Alert Groups
+      summary: Resolve alert group
+      description: Resolve all alerts in a group.
+      operationId: resolveAlertGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Alert group resolved
+  /api/incidents:
+    get:
+      tags:
+      - Incidents
+      summary: List incidents
+      description: Get all incidents for the organization with filtering.
+      operationId: listIncidents
+      parameters:
+      - name: monitorId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: severity
+        in: query
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - INVESTIGATING
+          - IDENTIFIED
+          - MONITORING
+          - RESOLVED
+          - POSTMORTEM
+          - active
+      - name: startDate
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: endDate
+        in: query
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: List of incidents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incidents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Incident'
+    post:
+      tags:
+      - Incidents
+      summary: Create incident
+      description: Manually create a new incident.
+      operationId: createIncident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - monitorId
+              - title
+              properties:
+                monitorId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 2000
+                severity:
+                  type: string
+                  enum:
+                  - CRITICAL
+                  - HIGH
+                  - MEDIUM
+                  - LOW
+      responses:
+        '201':
+          description: Incident created
+  /api/incidents/{id}:
+    get:
+      tags:
+      - Incidents
+      summary: Get incident
+      description: Get details of a specific incident.
+      operationId: getIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Incident details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '404':
+          description: Incident not found
+    put:
+      tags:
+      - Incidents
+      summary: Update incident
+      description: Update an incident's status, severity, or add an update message.
+      operationId: updateIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - INVESTIGATING
+                  - IDENTIFIED
+                  - MONITORING
+                  - RESOLVED
+                  - POSTMORTEM
+                severity:
+                  type: string
+                  enum:
+                  - CRITICAL
+                  - HIGH
+                  - MEDIUM
+                  - LOW
+                updateMessage:
+                  type: string
+      responses:
+        '200':
+          description: Incident updated
+    delete:
+      tags:
+      - Incidents
+      summary: Delete incident
+      description: Delete an incident.
+      operationId: deleteIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Incident deleted
+  /api/status-pages:
+    get:
+      tags:
+      - Status Pages
+      summary: List status pages
+      description: Get all status pages for the organization.
+      operationId: listStatusPages
+      responses:
+        '200':
+          description: List of status pages
+    post:
+      tags:
+      - Status Pages
+      summary: Create status page
+      description: Create a new public status page.
+      operationId: createStatusPage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - slug
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                customDomain:
+                  type: string
+      responses:
+        '201':
+          description: Status page created
+        '402':
+          description: Plan limit reached
+  /api/status-pages/{id}:
+    get:
+      tags:
+      - Status Pages
+      summary: Get status page
+      description: Get details of a specific status page.
+      operationId: getStatusPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Status page details
+    patch:
+      tags:
+      - Status Pages
+      summary: Update status page
+      description: Update a status page's configuration.
+      operationId: updateStatusPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Status page updated
+    delete:
+      tags:
+      - Status Pages
+      summary: Delete status page
+      description: Delete a status page.
+      operationId: deleteStatusPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Status page deleted
+  /api/status-pages/{id}/monitors:
+    get:
+      tags:
+      - Status Pages
+      summary: List monitors on status page
+      description: Get all monitors assigned to a status page.
+      operationId: listStatusPageMonitors
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Monitors on the status page
+    post:
+      tags:
+      - Status Pages
+      summary: Add monitor to status page
+      description: Add a monitor to a status page.
+      operationId: addMonitorToStatusPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - monitorId
+              properties:
+                monitorId:
+                  type: string
+                  format: uuid
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: Monitor added to status page
+  /api/status-pages/{id}/monitors/{monitorId}:
+    delete:
+      tags:
+      - Status Pages
+      summary: Remove monitor from status page
+      description: Remove a monitor from a status page.
+      operationId: removeMonitorFromStatusPage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: monitorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Monitor removed
+  /api/status-pages/{id}/custom-domain:
+    post:
+      tags:
+      - Status Pages
+      summary: Set custom domain
+      description: Configure a custom domain for a status page.
+      operationId: setCustomDomain
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - domain
+              properties:
+                domain:
+                  type: string
+      responses:
+        '200':
+          description: Custom domain configured
+    patch:
+      tags:
+      - Status Pages
+      summary: Verify custom domain
+      description: Verify DNS configuration for a custom domain.
+      operationId: verifyCustomDomain
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Domain verification result
+    delete:
+      tags:
+      - Status Pages
+      summary: Remove custom domain
+      description: Remove the custom domain from a status page.
+      operationId: removeCustomDomain
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Custom domain removed
+  /api/maintenance:
+    get:
+      tags:
+      - Maintenance
+      summary: List maintenance windows
+      description: Get all maintenance windows for the organization.
+      operationId: listMaintenanceWindows
+      responses:
+        '200':
+          description: List of maintenance windows
+    post:
+      tags:
+      - Maintenance
+      summary: Create maintenance window
+      description: Schedule a new maintenance window.
+      operationId: createMaintenanceWindow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - startTime
+              - endTime
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                startTime:
+                  type: string
+                  format: date-time
+                endTime:
+                  type: string
+                  format: date-time
+                monitorIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: Maintenance window created
+  /api/maintenance/{id}:
+    get:
+      tags:
+      - Maintenance
+      summary: Get maintenance window
+      description: Get details of a specific maintenance window.
+      operationId: getMaintenanceWindow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Maintenance window details
+    patch:
+      tags:
+      - Maintenance
+      summary: Update maintenance window
+      description: Update a maintenance window's schedule or monitors.
+      operationId: updateMaintenanceWindow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Maintenance window updated
+    delete:
+      tags:
+      - Maintenance
+      summary: Delete maintenance window
+      description: Delete a maintenance window.
+      operationId: deleteMaintenanceWindow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Maintenance window deleted
+  /api/integrations/discord:
+    get:
+      tags:
+      - Integrations
+      summary: Get Discord integration
+      description: Get the current Discord webhook integration settings.
+      operationId: getDiscordIntegration
+      responses:
+        '200':
+          description: Discord integration details
+    post:
+      tags:
+      - Integrations
+      summary: Create Discord integration
+      description: Set up a Discord webhook integration.
+      operationId: createDiscordIntegration
+      responses:
+        '201':
+          description: Discord integration created
+    delete:
+      tags:
+      - Integrations
+      summary: Delete Discord integration
+      description: Remove the Discord webhook integration.
+      operationId: deleteDiscordIntegration
+      responses:
+        '200':
+          description: Discord integration removed
+  /api/integrations/discord/test:
+    post:
+      tags:
+      - Integrations
+      summary: Test Discord integration
+      description: Send a test message to the configured Discord webhook.
+      operationId: testDiscordIntegration
+      responses:
+        '200':
+          description: Test message sent
+  /api/integrations/slack:
+    get:
+      tags:
+      - Integrations
+      summary: Get Slack integration
+      description: Get the current Slack integration settings.
+      operationId: getSlackIntegration
+      responses:
+        '200':
+          description: Slack integration details
+    delete:
+      tags:
+      - Integrations
+      summary: Delete Slack integration
+      description: Remove the Slack integration.
+      operationId: deleteSlackIntegration
+      responses:
+        '200':
+          description: Slack integration removed
+  /api/integrations/slack/test:
+    post:
+      tags:
+      - Integrations
+      summary: Test Slack integration
+      description: Send a test message to the configured Slack channel.
+      operationId: testSlackIntegration
+      responses:
+        '200':
+          description: Test message sent
+  /api/integrations/pagerduty:
+    get:
+      tags:
+      - Integrations
+      summary: Get PagerDuty integration
+      description: Get the current PagerDuty integration settings.
+      operationId: getPagerDutyIntegration
+      responses:
+        '200':
+          description: PagerDuty integration details
+    post:
+      tags:
+      - Integrations
+      summary: Create PagerDuty integration
+      description: Set up a PagerDuty integration with an integration key.
+      operationId: createPagerDutyIntegration
+      responses:
+        '201':
+          description: PagerDuty integration created
+    delete:
+      tags:
+      - Integrations
+      summary: Delete PagerDuty integration
+      description: Remove the PagerDuty integration.
+      operationId: deletePagerDutyIntegration
+      responses:
+        '200':
+          description: PagerDuty integration removed
+  /api/integrations/pagerduty/test:
+    post:
+      tags:
+      - Integrations
+      summary: Test PagerDuty integration
+      description: Send a test event to PagerDuty.
+      operationId: testPagerDutyIntegration
+      responses:
+        '200':
+          description: Test event sent
+  /api/integrations/webhook:
+    get:
+      tags:
+      - Integrations
+      summary: Get webhook integration
+      description: Get the current custom webhook integration settings.
+      operationId: getWebhookIntegration
+      responses:
+        '200':
+          description: Webhook integration details
+    post:
+      tags:
+      - Integrations
+      summary: Create webhook integration
+      description: Set up a custom webhook integration.
+      operationId: createWebhookIntegration
+      responses:
+        '201':
+          description: Webhook integration created
+    delete:
+      tags:
+      - Integrations
+      summary: Delete webhook integration
+      description: Remove the custom webhook integration.
+      operationId: deleteWebhookIntegration
+      responses:
+        '200':
+          description: Webhook integration removed
+  /api/integrations/webhook/test:
+    post:
+      tags:
+      - Integrations
+      summary: Test webhook integration
+      description: Send a test payload to the configured webhook URL.
+      operationId: testWebhookIntegration
+      responses:
+        '200':
+          description: Test payload sent
+  /api/integrations/google/properties:
+    get:
+      tags:
+      - Integrations
+      summary: List Google properties
+      description: List available Google Search Console properties.
+      operationId: listGoogleProperties
+      responses:
+        '200':
+          description: Google properties
+    post:
+      tags:
+      - Integrations
+      summary: Select Google property
+      description: Select a Google Search Console property to connect.
+      operationId: selectGoogleProperty
+      responses:
+        '200':
+          description: Property selected
+  /api/integrations/google/status:
+    get:
+      tags:
+      - Integrations
+      summary: Get Google integration status
+      description: Check Google integration connection status.
+      operationId: getGoogleIntegrationStatus
+      responses:
+        '200':
+          description: Integration status
+    delete:
+      tags:
+      - Integrations
+      summary: Disconnect Google integration
+      description: Disconnect Google integration and revoke tokens.
+      operationId: disconnectGoogleIntegration
+      responses:
+        '200':
+          description: Integration disconnected
+  /api/tools/website-check:
+    get:
+      tags:
+      - Tools
+      summary: Website health check
+      description: Free tool to check website availability, response time, SSL, headers, and more. Rate limited to 10 requests/minute
+        per IP.
+      operationId: websiteCheck
+      security: []
+      parameters:
+      - name: url
+        in: query
+        required: true
+        schema:
+          type: string
+        description: URL to check (https:// prefix added if missing)
+      responses:
+        '200':
+          description: Website check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  status:
+                    type: string
+                  responseTime:
+                    type: integer
+                  statusCode:
+                    type: integer
+                  ssl:
+                    type: object
+                  headers:
+                    type: object
+                  dns:
+                    type: object
+        '429':
+          description: Rate limit exceeded
+  /api/tools/ssl-check:
+    get:
+      tags:
+      - Tools
+      summary: SSL certificate check
+      description: Free tool to check SSL certificate validity, expiration, and chain details.
+      operationId: sslCheck
+      security: []
+      parameters:
+      - name: url
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: SSL certificate details
+        '429':
+          description: Rate limit exceeded
+  /api/tools/dns-check:
+    get:
+      tags:
+      - Tools
+      summary: DNS lookup tool
+      description: Free tool to check DNS records (A, AAAA, MX, NS, TXT, CNAME, SOA).
+      operationId: dnsCheck
+      security: []
+      parameters:
+      - name: domain
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: DNS records
+        '429':
+          description: Rate limit exceeded
+  /api/tools/speed-test:
+    get:
+      tags:
+      - Tools
+      summary: Website speed test
+      description: Free tool to test website loading speed and performance metrics.
+      operationId: speedTest
+      security: []
+      parameters:
+      - name: url
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Speed test results
+        '429':
+          description: Rate limit exceeded
+  /api/reports/generate:
+    post:
+      tags:
+      - Reports
+      summary: Generate report
+      description: Generate a new monitoring report on demand.
+      operationId: generateReport
+      responses:
+        '200':
+          description: Report generated
+    get:
+      tags:
+      - Reports
+      summary: Get report status
+      description: Get the status of a report generation request.
+      operationId: getReportStatus
+      responses:
+        '200':
+          description: Report status
+  /api/analytics:
+    get:
+      tags:
+      - Analytics
+      summary: Get analytics overview
+      description: Get monitoring analytics and statistics for the organization.
+      operationId: getAnalytics
+      responses:
+        '200':
+          description: Analytics data
+  /api/analytics/journeys:
+    get:
+      tags:
+      - Analytics
+      summary: Get user journeys
+      description: Get tracked user journeys for analytics.
+      operationId: getJourneys
+      responses:
+        '200':
+          description: Journey data
+    post:
+      tags:
+      - Analytics
+      summary: Track journey event
+      description: Track a user journey event.
+      operationId: trackJourney
+      security: []
+      responses:
+        '200':
+          description: Event tracked
+  /api/analytics/subscription-events:
+    get:
+      tags:
+      - Analytics
+      summary: Get subscription events
+      description: Get subscription lifecycle events for analytics.
+      operationId: getSubscriptionEvents
+      responses:
+        '200':
+          description: Subscription events
+    post:
+      tags:
+      - Analytics
+      summary: Track subscription event
+      description: Track a subscription-related event.
+      operationId: trackSubscriptionEvent
+      responses:
+        '200':
+          description: Event tracked
+  /api/notifications:
+    get:
+      tags:
+      - Notifications
+      summary: List in-app notifications
+      description: Get in-app notifications for the current user (bell icon).
+      operationId: listNotifications
+      responses:
+        '200':
+          description: Notifications
+    patch:
+      tags:
+      - Notifications
+      summary: Mark notifications as read
+      description: Mark one or more notifications as read.
+      operationId: markNotificationsRead
+      responses:
+        '200':
+          description: Notifications marked as read
+    delete:
+      tags:
+      - Notifications
+      summary: Delete notifications
+      description: Delete notifications.
+      operationId: deleteNotifications
+      responses:
+        '200':
+          description: Notifications deleted
+  /api/api-keys:
+    get:
+      tags:
+      - API Keys
+      summary: List API keys
+      description: Get all API keys for the organization.
+      operationId: listApiKeys
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+    post:
+      tags:
+      - API Keys
+      summary: Create API key
+      description: Generate a new API key for programmatic access. Requires Business plan or higher.
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                  description: Scopes like monitors:read, servers:write, * etc.
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: API key created (key shown only once)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiKey'
+                - type: object
+                  properties:
+                    key:
+                      type: string
+                      description: The actual API key value (shown only once)
+    delete:
+      tags:
+      - API Keys
+      summary: Delete API key
+      description: Revoke an API key.
+      operationId: deleteApiKey
+      responses:
+        '200':
+          description: API key deleted
+  /api/public/announcement:
+    get:
+      tags:
+      - Public
+      summary: Get active announcement
+      description: Returns the currently active site announcement (promotional banners, maintenance notices, etc.). Cached
+        for 60 seconds. No authentication required. Falls back to environment-based discount config if no database announcement
+        is active.
+      operationId: getPublicAnnouncement
+      security: []
+      parameters:
+      - name: context
+        in: query
+        schema:
+          type: string
+          enum:
+          - public
+          - dashboard
+          - checkout
+          default: public
+        description: Filter announcements by display context
+      responses:
+        '200':
+          description: Active announcement or null
+          content:
+            application/json:
+              schema:
+                type:
+                - object
+                - 'null'
+                properties:
+                  id:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                    - PROMO
+                    - MAINTENANCE
+                    - INFO
+                    - WARNING
+                  message:
+                    type: string
+                  active:
+                    type: boolean
+                  discountId:
+                    type:
+                    - string
+                    - 'null'
+                  discountPercent:
+                    type:
+                    - number
+                    - 'null'
+                  bgColor:
+                    type:
+                    - string
+                    - 'null'
+                  textColor:
+                    type:
+                    - string
+                    - 'null'
+                  icon:
+                    type:
+                    - string
+                    - 'null'
+                  showOnPublic:
+                    type: boolean
+                  showOnDashboard:
+                    type: boolean
+                  showOnCheckout:
+                    type: boolean
+  /api/public/stats:
+    get:
+      tags:
+      - Public
+      summary: Get public statistics
+      description: Get public platform statistics (total monitors, checks performed, etc.).
+      operationId: getPublicStats
+      security: []
+      responses:
+        '200':
+          description: Public stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalMonitors:
+                    type: integer
+                  totalChecks:
+                    type: integer
+                  totalUsers:
+                    type: integer
+  /api/public/blog:
+    get:
+      tags:
+      - Public
+      summary: List blog posts
+      description: Get published blog posts with pagination.
+      operationId: listBlogPosts
+      security: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 10
+      - name: category
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Blog posts
+  /api/public/blog/{slug}:
+    get:
+      tags:
+      - Public
+      summary: Get blog post
+      description: Get a single blog post by slug.
+      operationId: getBlogPost
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Blog post
+        '404':
+          description: Post not found
+  /api/public/blog/{slug}/view:
+    post:
+      tags:
+      - Public
+      summary: Track blog post view
+      description: Increment the view count for a blog post.
+      operationId: trackBlogView
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: View tracked
+  /api/public/status/{slug}:
+    get:
+      tags:
+      - Public
+      summary: Get public status page
+      description: Get a public status page by slug (no auth required).
+      operationId: getPublicStatusPage
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Public status page data
+        '404':
+          description: Status page not found
+  /api/public/status/{slug}/badge:
+    get:
+      tags:
+      - Public
+      summary: Get status badge
+      description: Get an SVG status badge for embedding in README files or websites.
+      operationId: getStatusBadge
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: SVG badge
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+  /api/public/status/{slug}/subscribe:
+    post:
+      tags:
+      - Public
+      summary: Subscribe to status updates
+      description: Subscribe an email address to status page updates.
+      operationId: subscribeToStatusPage
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Subscribed (verification email sent)
+    delete:
+      tags:
+      - Public
+      summary: Unsubscribe from status updates
+      description: Unsubscribe from status page updates.
+      operationId: unsubscribeFromStatusPage
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Unsubscribed
+  /api/public/status/{slug}/verify:
+    get:
+      tags:
+      - Public
+      summary: Verify status page subscription
+      description: Verify email subscription to a status page using the verification token.
+      operationId: verifyStatusSubscription
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Subscription verified
+  /api/public/resolve-domain:
+    get:
+      tags:
+      - Public
+      summary: Resolve custom domain
+      description: Resolve a custom domain to find the associated status page.
+      operationId: resolveCustomDomain
+      security: []
+      parameters:
+      - name: domain
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Resolved status page
+        '404':
+          description: Domain not found
+  /api/verify-domain:
+    get:
+      tags:
+      - System
+      summary: Verify domain ownership
+      description: Verify domain ownership via DNS TXT record lookup.
+      operationId: verifyDomain
+      parameters:
+      - name: domain
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Domain verification result
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: API key (vs_xxxxx). Can also be sent via X-API-Key header or api_key query parameter.
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - healthy
+          - unhealthy
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+        version:
+          type: string
+        services:
+          type: object
+          properties:
+            database:
+              type: object
+              properties:
+                status:
+                  type: string
+                latency:
+                  type: number
+            redis:
+              type: object
+              properties:
+                status:
+                  type: string
+                latency:
+                  type: number
+            worker:
+              type: object
+              properties:
+                status:
+                  type: string
+                activeJobs:
+                  type: number
+    LoginRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    RegisterRequest:
+      type: object
+      required:
+      - name
+      - email
+      - password
+      - acceptTerms
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          description: Must contain uppercase, lowercase, and number
+        organizationName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        acceptTerms:
+          type: boolean
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        organization:
+          $ref: '#/components/schemas/Organization'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
+        createdAt:
+          type: string
+          format: date-time
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+          enum:
+          - FREE
+          - STARTER
+          - BUSINESS
+          - AGENCY
+          - CUSTOM
+    MonitorType:
+      type: string
+      enum:
+      - HTTP
+      - HTTPS
+      - TCP
+      - PING
+      - DNS
+      - SSL
+      - WEBSOCKET
+      - GRAPHQL
+    MonitorStatus:
+      type: string
+      enum:
+      - OPERATIONAL
+      - DEGRADED
+      - PARTIAL_OUTAGE
+      - MAJOR_OUTAGE
+      - UI_CHANGED
+      - UNDER_MAINTENANCE
+      - PENDING
+    HTTPMethod:
+      type: string
+      enum:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - HEAD
+      - OPTIONS
+    Monitor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        type:
+          $ref: '#/components/schemas/MonitorType'
+        status:
+          $ref: '#/components/schemas/MonitorStatus'
+        enabled:
+          type: boolean
+        method:
+          $ref: '#/components/schemas/HTTPMethod'
+        checkInterval:
+          type: integer
+          description: Check interval in seconds
+        timeout:
+          type: integer
+          description: Timeout in milliseconds
+        uptime:
+          type: number
+          description: Uptime percentage
+        lastCheckedAt:
+          type: string
+          format: date-time
+        lastResponseTime:
+          type: integer
+        visualEnabled:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateMonitorRequest:
+      type: object
+      required:
+      - name
+      - url
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+        type:
+          $ref: '#/components/schemas/MonitorType'
+        enabled:
+          type: boolean
+          default: true
+        method:
+          $ref: '#/components/schemas/HTTPMethod'
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: string
+        timeout:
+          type: integer
+          minimum: 1000
+          maximum: 60000
+          default: 30000
+        checkInterval:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          default: 1800
+          description: Check interval in seconds
+        expectedStatus:
+          type: array
+          items:
+            type: integer
+          default:
+          - 200
+          - 201
+          - 204
+        visualEnabled:
+          type: boolean
+          default: true
+        visualConfig:
+          type: object
+          properties:
+            threshold:
+              type: number
+              minimum: 0
+              maximum: 100
+              default: 10
+            viewport:
+              type: object
+              properties:
+                width:
+                  type: integer
+                  default: 1920
+                height:
+                  type: integer
+                  default: 1080
+            fullPage:
+              type: boolean
+              default: false
+        tags:
+          type: array
+          items:
+            type: string
+    UpdateMonitorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        enabled:
+          type: boolean
+        checkInterval:
+          type: integer
+        timeout:
+          type: integer
+        method:
+          $ref: '#/components/schemas/HTTPMethod'
+        headers:
+          type: object
+        expectedStatus:
+          type: array
+          items:
+            type: integer
+        visualEnabled:
+          type: boolean
+        visualConfig:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+    MonitorListResponse:
+      type: object
+      properties:
+        monitors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Monitor'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    CheckResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/MonitorStatus'
+        responseTime:
+          type: integer
+        statusCode:
+          type: integer
+        error:
+          type: string
+    UptimeResponse:
+      type: object
+      properties:
+        uptimePercentage:
+          type: number
+        totalChecks:
+          type: integer
+        successfulChecks:
+          type: integer
+        failedChecks:
+          type: integer
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              status:
+                type: string
+    ResponseTimeResponse:
+      type: object
+      properties:
+        average:
+          type: number
+        min:
+          type: number
+        max:
+          type: number
+        p95:
+          type: number
+        p99:
+          type: number
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              responseTime:
+                type: integer
+    VisualDataResponse:
+      type: object
+      properties:
+        baseline:
+          type: object
+          properties:
+            url:
+              type: string
+            capturedAt:
+              type: string
+              format: date-time
+        latest:
+          type: object
+          properties:
+            url:
+              type: string
+            capturedAt:
+              type: string
+              format: date-time
+            diffPercentage:
+              type: number
+        history:
+          type: array
+          items:
+            type: object
+    Server:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        hostname:
+          type: string
+        ipAddress:
+          type: string
+        os:
+          type: string
+        status:
+          type: string
+          enum:
+          - ONLINE
+          - OFFLINE
+          - UNKNOWN
+        lastSeenAt:
+          type: string
+          format: date-time
+        cpuUsage:
+          type: number
+        memoryUsage:
+          type: number
+        diskUsage:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    ServerListResponse:
+      type: object
+      properties:
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Server'
+    ServerMetricsResponse:
+      type: object
+      properties:
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              cpu:
+                type: number
+              memory:
+                type: number
+              disk:
+                type: number
+              networkIn:
+                type: number
+              networkOut:
+                type: number
+        summary:
+          type: object
+          properties:
+            avgCpu:
+              type: number
+            avgMemory:
+              type: number
+            avgDisk:
+              type: number
+            maxCpu:
+              type: number
+            maxMemory:
+              type: number
+    ServerAlertListResponse:
+      type: object
+      properties:
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              type:
+                type: string
+                enum:
+                - SERVER_ALERT
+                - SERVER_OFFLINE
+                - SERVER_RECOVERY
+              severity:
+                type: string
+                enum:
+                - INFO
+                - WARNING
+                - CRITICAL
+              message:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+        total:
+          type: integer
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        state:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - RESOLVED
+        severity:
+          type: string
+          enum:
+          - INFO
+          - WARNING
+          - CRITICAL
+        message:
+          type: string
+        monitorId:
+          type: string
+          format: uuid
+        acknowledgedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    AlertListResponse:
+      type: object
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    AlertRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        condition:
+          type: string
+          enum:
+          - response_time
+          - uptime
+          - status_change
+          - consecutive_failures
+          - ssl_expiry
+        threshold:
+          type: number
+        operator:
+          type: string
+          enum:
+          - gt
+          - lt
+          - eq
+          - gte
+          - lte
+        severity:
+          type: string
+          enum:
+          - INFO
+          - WARNING
+          - CRITICAL
+        enabled:
+          type: boolean
+        monitorIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        channelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    CreateAlertRuleRequest:
+      type: object
+      required:
+      - name
+      - condition
+      - threshold
+      - severity
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        condition:
+          type: string
+          enum:
+          - response_time
+          - uptime
+          - status_change
+          - consecutive_failures
+          - ssl_expiry
+        threshold:
+          type: number
+        operator:
+          type: string
+          enum:
+          - gt
+          - lt
+          - eq
+          - gte
+          - lte
+        severity:
+          type: string
+          enum:
+          - INFO
+          - WARNING
+          - CRITICAL
+        enabled:
+          type: boolean
+          default: true
+        monitorIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        channelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    AlertRuleListResponse:
+      type: object
+      properties:
+        alertRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertRule'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    NotificationChannel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - EMAIL
+          - SLACK
+          - DISCORD
+          - TELEGRAM
+          - WHATSAPP
+          - SMS
+          - PAGERDUTY
+          - WEBHOOK
+          - MICROSOFT_TEAMS
+          - PUSH
+        enabled:
+          type: boolean
+        config:
+          type: object
+          description: Channel-specific configuration
+        createdAt:
+          type: string
+          format: date-time
+    CreateNotificationChannelRequest:
+      type: object
+      required:
+      - name
+      - type
+      - config
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          enum:
+          - EMAIL
+          - SLACK
+          - DISCORD
+          - TELEGRAM
+          - WHATSAPP
+          - SMS
+          - PAGERDUTY
+          - WEBHOOK
+          - MICROSOFT_TEAMS
+          - PUSH
+        enabled:
+          type: boolean
+          default: true
+        config:
+          type: object
+          description: 'Channel-specific config. For EMAIL: {email}. For SLACK: {webhookUrl}. For DISCORD: {webhookUrl}. For
+            TELEGRAM: {botToken, chatId}. For WEBHOOK: {url, secret}.'
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - INVESTIGATING
+          - IDENTIFIED
+          - MONITORING
+          - RESOLVED
+          - POSTMORTEM
+        severity:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+        monitorId:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+          description: First 8 characters of the key for identification
+        scopes:
+          type: array
+          items:
+            type: string
+        lastUsedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasMore:
+          type: boolean
+        hasPrevious:
+          type: boolean
+security:
+- ApiKeyAuth: []
+externalDocs:
+  description: Hosted API reference (Scalar UI)
+  url: https://visualsentinel.com/docs

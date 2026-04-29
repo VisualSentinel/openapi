@@ -1,0 +1,56 @@
+name: Validate OpenAPI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  redocly:
+    name: Redocly lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Redocly lint (openapi.json)
+        run: npx --yes @redocly/cli@latest lint openapi.json
+      - name: Redocly lint (openapi.yaml)
+        run: npx --yes @redocly/cli@latest lint openapi.yaml
+
+  spectral:
+    name: Spectral lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@latest lint openapi.yaml --ruleset spectral:oas
+
+  json-yaml-sync:
+    name: openapi.json and openapi.yaml are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Verify regenerated yaml matches committed yaml
+        run: |
+          python3 -c "
+          import json, yaml, sys
+          with open('openapi.json') as f: spec = json.load(f)
+          with open('openapi.yaml') as f: expected = f.read()
+          import io
+          buf = io.StringIO()
+          yaml.safe_dump(spec, buf, sort_keys=False, allow_unicode=True, width=120)
+          if buf.getvalue() != expected:
+              print('::error::openapi.yaml is not a regeneration of openapi.json. Run the regen command in CONTRIBUTING.md and recommit.')
+              sys.exit(1)
+          print('In sync.')
+          "
