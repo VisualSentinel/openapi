@@ -3,7 +3,7 @@
   "info": {
     "title": "Visual Sentinel API",
     "description": "Website monitoring API with six layers: uptime, performance, SSL, DNS, visual change detection and content change detection.\n\n## Authentication\n\nEndpoints accept either of two credentials unless an operation says otherwise.\n\n### 1. Session cookie (web clients)\nCall `POST /api/auth/login` with email and password to get a session cookie. The cookie is sent automatically with later requests. Session writes are CSRF protected (send `X-CSRF-Token` on POST, PUT, PATCH and DELETE).\n\n### 2. API key (agents, integrations, scripts)\nOwners and admins create keys in **Organization settings > Developer**. A key is `vs_` followed by 64 hexadecimal characters and is shown once. Send it as any of:\n- `Authorization: Bearer vs_...` header (recommended)\n- `X-API-Key: vs_...` header\n- `?api_key=vs_...` query parameter\n\n**API access requires the Business or Agency plan.** On other plans every key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.\n\nScopes have the form `{resource}:{read|write}`:\n- GET requests need `{resource}:read`. POST, PUT, PATCH and DELETE need `{resource}:write`. In the dashboard, choosing write also grants read.\n- `{resource}:*` grants read and write on one resource. `*` grants every resource.\n- A missing scope returns 403 with code `SCOPE_DENIED` and names the scope the request needs.\n- Platform admin endpoints under `/api/admin/*` are blocked for API keys whatever the scope.\n- CSRF checks are skipped for API key requests.\n- The role of the member who created the key applies, so a key made by a viewer cannot write.\n\nResources and the paths they cover:\n- `monitors`: `/api/monitors/*`, `/api/monitoring/*`, `/api/metrics/*`, `/api/dependencies/*`, `/api/reports/*`, `/api/dns/*`\n- `incidents`: `/api/incidents/*`\n- `servers`: `/api/servers/*` (the dashboard grants read only)\n- `status-pages`: `/api/status-pages/*`\n- `alerts`: `/api/alerts/*`, `/api/alert-rules/*`, `/api/alert-groups/*`\n- `channels`: `/api/notification-channels/*`, `/api/notifications/*`\n- `maintenance`: `/api/maintenance/*`\n- `organization`: `/api/organization/*`, `/api/settings/*`, `/api/plan`, `/api/integrations/*`\n- `user`: `/api/user/*`, `/api/profile/*`, `/api/onboarding/*`\n\nOther paths, for example `/api/overview`, `/api/workspace/*`, `/api/insights/*`, `/api/analytics/*` and `/api/billing/*`, resolve to the `general` resource and need a key with the `*` scope. The dashboard does not create `*` keys.\n\n### Session-only endpoints (cookie required)\nThese endpoints stay session-only by design. An API key on them returns 403 with code `SESSION_REQUIRED` (or 401 where no session exists):\n- `/api/auth/*` (login, logout, refresh, 2FA, password reset, OAuth)\n- `/api/billing/checkout`, `/api/billing/change-plan`, `/api/billing/portal` (billing changes)\n- `DELETE /api/organization`, member and invitation management under `/api/organization/members` and `/api/organization/invitations`, `POST/PUT/DELETE /api/organization/smtp`, `POST /api/organization/leave`, and `POST/PATCH/DELETE /api/api-keys` (account and access management)\n- `/api/integrations/slack/auth` (OAuth start)\n- `/api/organization/invitations/accept` (email link flow)\n- `/api/user/delete-account`\n- `/api/user/organizations/switch` (changes the session cookie)\n- `/api/chat/*`, `/api/ai/*`, `/api/incidents/{id}/summarize`, `/api/alert-groups/{id}/summarize`, `/api/reports/digest`, `POST /api/monitors/{id}/anomalies`, `POST /api/monitors/{id}/report` (AI and reporting features)\n\n## Check regions\n\nUptime checks for HTTP, HTTPS, KEYWORD, API and GRAPHQL monitors can run from `EU` (Europe), `US` (United States) and `ASIA` (Asia Pacific); other monitor types run from `EU`. Set them with `locations` on monitor create and update. Screenshots for visual checks are taken in `EU` or `ASIA` (`visualRegion`).\n\nAsia Pacific is enabled per workspace during its rollout. `GET /api/monitoring/regions` reports whether this workspace can use it. When it cannot, monitor create and update with `ASIA` return 400 with code `REGION_UNAVAILABLE`. A region outside your plan returns 403 with code `LOCATION_RESTRICTED`.\n\n## Mobile apps (iOS, Android, Mac)\n\nNative apps can use the same login flow: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <jwt>` on every later request. CSRF is skipped for Bearer tokens. Refresh tokens with `POST /api/auth/refresh`, passing the refresh token in the request body (or the `X-Client-Type: mobile` header).\n\n## Rate limits\n\n- API keys: 1,000 requests per minute per key. Over the limit the API returns 429 with code `RATE_LIMIT` and a `Retry-After` header.\n- Login: 15 attempts per 5 minutes\n- Registration: 3 per hour\n- Monitor creation: 1,000 per hour per workspace\n- Alert rule creation: 20 per minute\n- Bulk monitor changes (`/api/monitors/bulk-*`): 30 per minute per workspace\n- Public tools (`/api/tools/*`): 10 per minute per IP address\n\n## Base URL\n\nProduction: `https://visualsentinel.com`",
-    "version": "2.214.52",
+    "version": "2.215.0",
     "contact": {
       "name": "Visual Sentinel Support",
       "url": "https://visualsentinel.com/contact",
@@ -141,7 +141,7 @@
           "System"
         ],
         "summary": "Health check",
-        "description": "Returns system health status including database, Redis, and worker connectivity.",
+        "description": "Returns system health status including database, cache, and worker connectivity.",
         "operationId": "getHealth",
         "security": [],
         "responses": {
@@ -349,7 +349,12 @@
           "200": {
             "description": "Logged out successfully"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/auth/me": {
@@ -374,7 +379,12 @@
           "401": {
             "description": "Not authenticated"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/auth/csrf": {
@@ -401,7 +411,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/auth/refresh": {
@@ -419,7 +434,12 @@
           "401": {
             "description": "Session expired"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/auth/sessions": {
@@ -831,7 +851,12 @@
           "200": {
             "description": "Verification email sent"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/auth/oauth/providers": {
@@ -4773,7 +4798,7 @@
           "Status Pages"
         ],
         "summary": "Create status page",
-        "description": "Create a new public status page.",
+        "description": "Create a status page. Pages are public unless `public` is false.",
         "operationId": "createStatusPage",
         "requestBody": {
           "required": true,
@@ -4792,11 +4817,10 @@
                   "slug": {
                     "type": "string"
                   },
-                  "description": {
-                    "type": "string"
-                  },
-                  "customDomain": {
-                    "type": "string"
+                  "public": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether the page is publicly visible."
                   }
                 }
               }
@@ -4804,11 +4828,17 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Status page created"
+          "200": {
+            "description": "Status page created. Body: `{ statusPage, message }`."
           },
           "402": {
-            "description": "Plan limit reached"
+            "description": "Trial expired or workspace suspended"
+          },
+          "403": {
+            "description": "No workspace membership, or status page limit reached (`code: LIMIT_EXCEEDED` with `limit` and `current`)"
+          },
+          "503": {
+            "description": "Workspace status could not be checked; try again"
           }
         }
       }
@@ -6670,7 +6700,12 @@
           "302": {
             "description": "Redirect to settings"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/integrations/google/properties": {
@@ -7309,7 +7344,12 @@
           "200": {
             "description": "Organization switched"
           }
-        }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/api-keys": {
@@ -8524,7 +8564,8 @@
           "200": {
             "description": "Domain verification result"
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/client-error": {
@@ -8549,13 +8590,14 @@
           "System"
         ],
         "summary": "IndexNow submission",
-        "description": "Submit URLs to IndexNow for search engine indexing.",
+        "description": "Submit URLs to IndexNow for search engine indexing. Internal: requires the deployment shared secret, not a session or API key.",
         "operationId": "submitIndexNow",
         "responses": {
           "200": {
             "description": "URLs submitted"
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/revalidate": {
@@ -8564,13 +8606,14 @@
           "System"
         ],
         "summary": "Revalidate cache",
-        "description": "Revalidate Next.js ISR cache for specific paths.",
+        "description": "Refresh cached pages for specific paths. Internal: requires the deployment shared secret, not a session or API key.",
         "operationId": "revalidateCache",
         "responses": {
           "200": {
             "description": "Cache revalidated"
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/email-tracking/open/{messageId}": {
@@ -8925,7 +8968,7 @@
           "Monitors"
         ],
         "summary": "Check region availability",
-        "description": "Whether this workspace can use the Asia Pacific (ASIA) region for uptime `locations` and `visualRegion`. Use ASIA only when both `apac.available` and `apacAllowed` are true; otherwise monitor create and update with ASIA return 400 `REGION_UNAVAILABLE` (or 403 `LOCATION_RESTRICTED` when the plan excludes it). EU and US are always available. API key scope: `monitors:read`.",
+        "description": "Whether this workspace can use the Asia Pacific (ASIA) region for uptime `locations` and `visualRegion`. Use ASIA only when both `apac.available` and `apacAllowed` are true; otherwise monitor create and update with ASIA return 400 `REGION_UNAVAILABLE` (or 403 `LOCATION_RESTRICTED` when the plan excludes it). EU and US do not depend on this check. API key scope: `monitors:read`.",
         "operationId": "getMonitoringRegions",
         "responses": {
           "200": {
@@ -15318,45 +15361,12 @@
                   "type": "string"
                 },
                 "additionalProperties": {
-                  "$ref": "#/$defs/__schema0"
+                  "$ref": "#/components/schemas/JsonValue"
                 }
               }
             },
             "required": [
               "query"
-            ]
-          }
-        },
-        "$defs": {
-          "__schema0": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/__schema0"
-                }
-              },
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {
-                  "$ref": "#/$defs/__schema0"
-                }
-              }
             ]
           }
         }
@@ -17721,6 +17731,37 @@
             "format": "date-time"
           }
         }
+      },
+      "JsonValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          }
+        ]
       }
     }
   },

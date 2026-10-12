@@ -142,7 +142,7 @@ info:
 
 
     Production: `https://visualsentinel.com`'
-  version: 2.214.52
+  version: 2.215.0
   contact:
     name: Visual Sentinel Support
     url: https://visualsentinel.com/contact
@@ -217,7 +217,7 @@ paths:
       tags:
       - System
       summary: Health check
-      description: Returns system health status including database, Redis, and worker connectivity.
+      description: Returns system health status including database, cache, and worker connectivity.
       operationId: getHealth
       security: []
       responses:
@@ -351,6 +351,8 @@ paths:
       responses:
         '200':
           description: Logged out successfully
+      security:
+      - SessionAuth: []
   /api/auth/me:
     get:
       tags:
@@ -367,6 +369,8 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           description: Not authenticated
+      security:
+      - SessionAuth: []
   /api/auth/csrf:
     get:
       tags:
@@ -384,6 +388,8 @@ paths:
                 properties:
                   csrfToken:
                     type: string
+      security:
+      - SessionAuth: []
   /api/auth/refresh:
     post:
       tags:
@@ -396,6 +402,8 @@ paths:
           description: Session refreshed
         '401':
           description: Session expired
+      security:
+      - SessionAuth: []
   /api/auth/sessions:
     get:
       tags:
@@ -661,6 +669,8 @@ paths:
       responses:
         '200':
           description: Verification email sent
+      security:
+      - SessionAuth: []
   /api/auth/oauth/providers:
     get:
       tags:
@@ -3237,7 +3247,7 @@ paths:
       tags:
       - Status Pages
       summary: Create status page
-      description: Create a new public status page.
+      description: Create a status page. Pages are public unless `public` is false.
       operationId: createStatusPage
       requestBody:
         required: true
@@ -3253,15 +3263,19 @@ paths:
                   type: string
                 slug:
                   type: string
-                description:
-                  type: string
-                customDomain:
-                  type: string
+                public:
+                  type: boolean
+                  default: true
+                  description: Whether the page is publicly visible.
       responses:
-        '201':
-          description: Status page created
+        '200':
+          description: 'Status page created. Body: `{ statusPage, message }`.'
         '402':
-          description: Plan limit reached
+          description: Trial expired or workspace suspended
+        '403':
+          description: 'No workspace membership, or status page limit reached (`code: LIMIT_EXCEEDED` with `limit` and `current`)'
+        '503':
+          description: Workspace status could not be checked; try again
   /api/status-pages/{id}:
     get:
       tags:
@@ -4482,6 +4496,8 @@ paths:
       responses:
         '302':
           description: Redirect to settings
+      security:
+      - SessionAuth: []
   /api/integrations/google/properties:
     get:
       tags:
@@ -4907,6 +4923,8 @@ paths:
       responses:
         '200':
           description: Organization switched
+      security:
+      - SessionAuth: []
   /api/api-keys:
     get:
       tags:
@@ -5698,6 +5716,7 @@ paths:
       responses:
         '200':
           description: Domain verification result
+      security: []
   /api/client-error:
     post:
       tags:
@@ -5714,21 +5733,25 @@ paths:
       tags:
       - System
       summary: IndexNow submission
-      description: Submit URLs to IndexNow for search engine indexing.
+      description: 'Submit URLs to IndexNow for search engine indexing. Internal: requires the deployment shared secret, not
+        a session or API key.'
       operationId: submitIndexNow
       responses:
         '200':
           description: URLs submitted
+      security: []
   /api/revalidate:
     post:
       tags:
       - System
       summary: Revalidate cache
-      description: Revalidate Next.js ISR cache for specific paths.
+      description: 'Refresh cached pages for specific paths. Internal: requires the deployment shared secret, not a session
+        or API key.'
       operationId: revalidateCache
       responses:
         '200':
           description: Cache revalidated
+      security: []
   /api/email-tracking/open/{messageId}:
     get:
       tags:
@@ -5969,8 +5992,8 @@ paths:
       summary: Check region availability
       description: 'Whether this workspace can use the Asia Pacific (ASIA) region for uptime `locations` and `visualRegion`.
         Use ASIA only when both `apac.available` and `apacAllowed` are true; otherwise monitor create and update with ASIA
-        return 400 `REGION_UNAVAILABLE` (or 403 `LOCATION_RESTRICTED` when the plan excludes it). EU and US are always available.
-        API key scope: `monitors:read`.'
+        return 400 `REGION_UNAVAILABLE` (or 403 `LOCATION_RESTRICTED` when the plan excludes it). EU and US do not depend
+        on this check. API key scope: `monitors:read`.'
       operationId: getMonitoringRegions
       responses:
         '200':
@@ -10512,24 +10535,9 @@ components:
               propertyNames:
                 type: string
               additionalProperties:
-                $ref: '#/$defs/__schema0'
+                $ref: '#/components/schemas/JsonValue'
           required:
           - query
-      $defs:
-        __schema0:
-          anyOf:
-          - type: string
-          - type: number
-          - type: boolean
-          - type: 'null'
-          - type: array
-            items:
-              $ref: '#/$defs/__schema0'
-          - type: object
-            propertyNames:
-              type: string
-            additionalProperties:
-              $ref: '#/$defs/__schema0'
     MaintenanceWindow:
       type: object
       properties:
@@ -12232,6 +12240,20 @@ components:
         createdAt:
           type: string
           format: date-time
+    JsonValue:
+      anyOf:
+      - type: string
+      - type: number
+      - type: boolean
+      - type: 'null'
+      - type: array
+        items:
+          $ref: '#/components/schemas/JsonValue'
+      - type: object
+        propertyNames:
+          type: string
+        additionalProperties:
+          $ref: '#/components/schemas/JsonValue'
 security:
 - SessionAuth: []
 - ApiKeyAuth: []
