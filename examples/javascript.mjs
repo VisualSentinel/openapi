@@ -5,7 +5,7 @@
 const API = "https://visualsentinel.com/api";
 const KEY = process.env.VS_API_KEY;
 if (!KEY) {
-  console.error("Set VS_API_KEY (https://visualsentinel.com/settings/api-keys)");
+  console.error("Set VS_API_KEY (https://visualsentinel.com/organization/settings#developer)");
   process.exit(1);
 }
 
@@ -27,22 +27,35 @@ async function createMonitor(payload) {
   return res.json();
 }
 
-async function listIncidents(limit = 5) {
-  const res = await fetch(`${API}/incidents?limit=${limit}`, { headers });
+async function listOpenIncidents(limit = 5) {
+  const res = await fetch(`${API}/incidents?status=active&limit=${limit}`, { headers });
   if (!res.ok) throw new Error(`incidents ${res.status}`);
+  return (await res.json()).incidents;
+}
+
+async function regions() {
+  const res = await fetch(`${API}/monitoring/regions`, { headers });
+  if (!res.ok) throw new Error(`regions ${res.status}`);
   return res.json();
 }
 
 const monitors = await listMonitors();
 console.log(`monitors: ${monitors.length}`);
 
+// Check regions: EU, US and ASIA (Asia Pacific). ASIA is enabled per
+// workspace; without it the API answers 400 REGION_UNAVAILABLE.
+const available = await regions();
+const locations = ["EU", "US"];
+if (available.apac.available && available.apacAllowed) locations.push("ASIA");
+
 const created = await createMonitor({
   name: "Example",
   url: "https://example.com",
-  type: "HTTP",
-  interval: 300,
+  type: "HTTPS",
+  checkInterval: 300, // seconds
+  locations,
 });
 console.log(`created: ${created.id}`);
 
-const incidents = await listIncidents(5);
-console.log(`recent incidents: ${incidents.length}`);
+const incidents = await listOpenIncidents(5);
+console.log(`open incidents: ${incidents.length}`);

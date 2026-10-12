@@ -4,18 +4,21 @@
       "anchor": "https://visualsentinel.com/api",
       "service-desc": [
         {
-          "href": "https://raw.githubusercontent.com/VisualSentinel/openapi/main/openapi.json",
+          "href": "https://visualsentinel.com/openapi.json",
           "type": "application/json"
-        },
-        {
-          "href": "https://raw.githubusercontent.com/VisualSentinel/openapi/main/openapi.yaml",
-          "type": "application/yaml"
         }
       ],
       "service-doc": [
         {
           "href": "https://visualsentinel.com/docs",
           "type": "text/html"
+        }
+      ],
+      "mcp-server-card": [
+        {
+          "href": "https://visualsentinel.com/.well-known/mcp/server-card.json",
+          "type": "application/json",
+          "title": "Visual Sentinel MCP server (npm: @visualsentinel/mcp-server)"
         }
       ],
       "status": [

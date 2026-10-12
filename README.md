@@ -1,44 +1,51 @@
 # Visual Sentinel OpenAPI Specification
 
-Public OpenAPI 3.1.0 specification for the [Visual Sentinel](https://visualsentinel.com) REST API: a six-layer website monitoring platform covering uptime, performance, SSL, DNS, visual regression, and content change detection.
+OpenAPI 3.1.0 specification for the [Visual Sentinel](https://visualsentinel.com) REST API: a six-layer website monitoring platform covering uptime, performance, SSL, DNS, visual change detection and content change detection.
 
-* **Spec (JSON):** [`openapi.json`](./openapi.json)
-* **Spec (YAML):** [`openapi.yaml`](./openapi.yaml)
-* **Hosted reference (Scalar UI):** https://visualsentinel.com/docs
-* **Sign up / API key:** https://visualsentinel.com/settings/api-keys
+* **Live spec (source of truth):** https://visualsentinel.com/openapi.json
+* **Mirror in this repo:** [`openapi.json`](./openapi.json) and [`openapi.yaml`](./openapi.yaml)
+* **Hosted reference:** https://visualsentinel.com/docs
+* **API keys:** Organization settings > Developer, https://visualsentinel.com/organization/settings#developer
+* **MCP server:** https://github.com/VisualSentinel/mcp-server
 * **Changelog:** [`CHANGELOG.md`](./CHANGELOG.md)
 
-## What this spec covers
+`openapi.json` here is a copy of the live spec at the version in `info.version`. If the two differ, the live spec wins.
 
-The 93 endpoints in this spec are the public, API-key-callable surface of Visual Sentinel: monitor management, server registration, incident workflows, alert rules and groups, notification channels, status pages, maintenance windows, integrations (Slack, Discord, PagerDuty, generic webhooks), public read-only data (announcement, blog, status pages), and the four free public tools (DNS / SSL / speed / website checker).
+## What the spec covers
 
-Out of scope on purpose: authentication flows, account billing, organization administration, AI-assisted endpoints (chat, summarization), and internal infrastructure routes. Those are session-only by design and not part of the public contract.
+185 paths and 283 operations:
+
+* 190 operations accept an API key: monitors (including check regions, bulk changes, alert mutes and server links), incidents and incident updates, alert rules, alerts and alert groups, notification channels, status pages (monitors, groups, servers, branding), maintenance windows, servers, service dependencies and reports.
+* 42 operations are public and need no credentials: the free tools under `/api/tools/*`, health, public status pages and other public data.
+* 37 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
+* 14 retired operations are kept as `deprecated`. They always return 410 Gone and name the replacement.
 
 ## Authentication
 
-All non-public endpoints require an API key sent in the `X-API-Key` header:
+**API access requires the Business or Agency plan.** On other plans every API key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.
+
+Owners and admins create keys in Organization settings > Developer. A key is `vs_` followed by 64 hexadecimal characters and is shown once. Send it as any of:
 
 ```
-X-API-Key: vs_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Authorization: Bearer vs_...
+X-API-Key: vs_...
+?api_key=vs_...
 ```
 
-Generate keys at https://visualsentinel.com/settings/api-keys. Keys are scoped to the issuing organization and inherit the user's role-based permissions. Revoke a leaked key from the same UI; revocation is immediate.
+Keys belong to one workspace and carry scopes of the form `{resource}:{read|write}` (for example `monitors:read`, `incidents:write`). GET needs `read`; POST, PUT, PATCH and DELETE need `write`. A missing scope returns 403 `SCOPE_DENIED` naming the scope required. Changes also follow the role of the member who created the key. Revoke a leaked key in the same place; revocation is immediate. The full scope and resource table is in `info.description` of the spec.
 
-The `/api/public/*` and `/api/tools/*` paths require no authentication.
+`/api/public/*` and `/api/tools/*` need no authentication.
+
+## Check regions
+
+Uptime checks for HTTP, HTTPS, KEYWORD, API and GRAPHQL monitors can run from `EU` (Europe), `US` (United States) and `ASIA` (Asia Pacific); other monitor types run from `EU`. Set them with `locations` when you create or update a monitor. Screenshots for visual checks are taken in `EU` or `ASIA` (`visualRegion`).
+
+Asia Pacific is enabled per workspace while it rolls out. `GET /api/monitoring/regions` tells you whether your workspace can use it. When it cannot, a monitor request with `ASIA` returns 400 `REGION_UNAVAILABLE`. A region outside your plan returns 403 `LOCATION_RESTRICTED`.
 
 ## Rate limits
 
-Default per-organization limits, applied on a sliding window:
-
-| Tier         | Requests / minute | Burst |
-|--------------|-------------------|-------|
-| Free         | 60                | 120   |
-| Solo         | 300               | 600   |
-| Starter      | 600               | 1200  |
-| Business     | 1500              | 3000  |
-| Agency       | 3000              | 6000  |
-
-`429 Too Many Requests` responses include `Retry-After` (seconds) and `RateLimit-Reset` (epoch). The full per-endpoint policy is in `info.x-rate-limit` of the spec.
+* API keys: 1,000 requests per minute per key. Over the limit the API returns 429 with code `RATE_LIMIT` and a `Retry-After` header (seconds).
+* Some operations have their own limits as well, for example monitor creation (1,000 per hour per workspace), bulk monitor changes (30 per minute per workspace) and the public tools (10 per minute per IP address). The spec's `info.description` lists them.
 
 ## Quick start
 
@@ -46,17 +53,28 @@ Default per-organization limits, applied on a sliding window:
 
 ```bash
 curl https://visualsentinel.com/api/monitors \
-  -H "X-API-Key: $VS_API_KEY" \
+  -H "Authorization: Bearer $VS_API_KEY" \
   -H "Accept: application/json"
 ```
+
+Create a monitor checked every 5 minutes from Europe and the United States:
+
+```bash
+curl -X POST https://visualsentinel.com/api/monitors \
+  -H "Authorization: Bearer $VS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Shop","url":"https://shop.example.com","type":"HTTPS","checkInterval":300,"locations":["EU","US"]}'
+```
+
+`checkInterval` is in seconds (values below your plan's minimum are raised to it). `timeout` is in milliseconds.
 
 ### JavaScript (fetch)
 
 ```javascript
 const res = await fetch("https://visualsentinel.com/api/monitors", {
-  headers: { "X-API-Key": process.env.VS_API_KEY },
+  headers: { Authorization: `Bearer ${process.env.VS_API_KEY}` },
 });
-const data = await res.json();
+const monitors = await res.json();
 ```
 
 ### Python (requests)
@@ -65,7 +83,7 @@ const data = await res.json();
 import os, requests
 res = requests.get(
     "https://visualsentinel.com/api/monitors",
-    headers={"X-API-Key": os.environ["VS_API_KEY"]},
+    headers={"Authorization": f"Bearer {os.environ['VS_API_KEY']}"},
 )
 res.raise_for_status()
 print(res.json())
@@ -75,23 +93,30 @@ More examples in [`examples/`](./examples/).
 
 ## Versioning
 
-* **API version:** semantic, tracked in `info.version` of the spec. Breaking changes get a major bump and a deprecation window of at least 90 days.
-* **Spec version:** the file in this repository tracks the production API. Each tagged release here corresponds to a deployed Visual Sentinel release.
-
-Backwards-incompatible changes to existing endpoints are avoided whenever possible. New optional fields and new endpoints are not considered breaking. We document deprecations in `CHANGELOG.md` with the removal target version.
+* `info.version` is the Visual Sentinel release the spec describes.
+* New optional fields and new endpoints are not breaking. Deprecations and removals are recorded in `CHANGELOG.md`.
 
 ## Validation
 
-This repository ships with a GitHub Actions workflow ([`.github/workflows/validate.yml`](./.github/workflows/validate.yml)) that runs `redocly lint` and `spectral lint` on every push and pull request. Validate locally:
+The GitHub Actions workflow ([`.github/workflows/validate.yml`](./.github/workflows/validate.yml)) runs `redocly lint` and `spectral lint` and checks that `openapi.yaml` is a regeneration of `openapi.json`. Validate locally:
 
 ```bash
 npx @redocly/cli lint openapi.json
 npx @stoplight/spectral-cli lint openapi.yaml
 ```
 
+## Updating the mirror
+
+```bash
+curl -fsS https://visualsentinel.com/openapi.json -o openapi.json
+python3 -c "import json,yaml; yaml.safe_dump(json.load(open('openapi.json')), open('openapi.yaml','w'), sort_keys=False, allow_unicode=True, width=120)"
+```
+
+Then add a `CHANGELOG.md` entry.
+
 ## Discovery
 
-Visual Sentinel publishes RFC 9727 API catalog metadata at [https://visualsentinel.com/.well-known/api-catalog](https://visualsentinel.com/.well-known/api-catalog), pointing AI agents and discovery tools at this repository's spec. The same catalog is mirrored in this repo at [`.well-known/api-catalog.json`](./.well-known/api-catalog.json).
+Visual Sentinel publishes RFC 9727 API catalog metadata at https://visualsentinel.com/.well-known/api-catalog. It points agents and discovery tools at the live spec, https://visualsentinel.com/openapi.json. A copy is kept in [`.well-known/api-catalog.json`](./.well-known/api-catalog.json).
 
 ## Issues, suggestions, and corrections
 

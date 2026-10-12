@@ -15,7 +15,7 @@ If the spec field is missing or the type is wrong, label the issue `spec-correct
 
 ## Suggesting a new endpoint
 
-The public spec only documents endpoints that are part of the supported API contract. New endpoints land in this repository after they ship in production, not before. If you have a request for a new operation, open a feature request on https://visualsentinel.com/contact rather than this repo so it lands in the product backlog.
+The spec in this repository is a copy of the live spec at https://visualsentinel.com/openapi.json; corrections are made in the Visual Sentinel app and then synced here. New endpoints land in this repository after they ship in production, not before. If you have a request for a new operation, open a feature request on https://visualsentinel.com/contact rather than this repo so it lands in the product backlog.
 
 ## Pull requests
 
