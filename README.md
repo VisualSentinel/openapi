@@ -15,9 +15,9 @@ OpenAPI 3.1.0 specification for the [Visual Sentinel](https://visualsentinel.com
 
 185 paths and 283 operations:
 
-* 190 operations accept an API key: monitors (including check regions, bulk changes, alert mutes and server links), incidents and incident updates, alert rules, alerts and alert groups, notification channels, status pages (monitors, groups, servers, branding), maintenance windows, servers, service dependencies and reports.
-* 42 operations are public and need no credentials: the free tools under `/api/tools/*`, health, public status pages and other public data.
-* 37 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
+* 180 operations accept an API key: monitors (including check regions, bulk changes, alert mutes and server links), incidents and incident updates, alert rules, alerts and alert groups, notification channels, status pages (monitors, groups, servers, branding), maintenance windows, servers, service dependencies and reports.
+* 45 operations are public and need no credentials: the free tools under `/api/tools/*`, health, public status pages and other public data.
+* 44 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
 * 14 retired operations are kept as `deprecated`. They always return 410 Gone and name the replacement.
 
 ## Authentication
