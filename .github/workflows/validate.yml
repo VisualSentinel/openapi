@@ -27,9 +27,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Spectral lint
-        run: npx --yes @stoplight/spectral-cli@latest lint openapi.yaml --ruleset spectral:oas
+        run: npx --yes @stoplight/spectral-cli@6.15.0 lint openapi.yaml --ruleset .spectral.yaml
 
   json-yaml-sync:
     name: openapi.json and openapi.yaml are in sync
