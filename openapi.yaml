@@ -5917,7 +5917,6 @@ paths:
                     - TRIAL_ALREADY_USED
                     - TRIAL_DOMAIN_USED
                     description: Why the trial was refused. Clients branch on this, not on the text.
-      deprecated: true
   /api/settings/deduplication:
     get:
       tags:

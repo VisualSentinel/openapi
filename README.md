@@ -19,7 +19,7 @@ OpenAPI 3.1.0 specification for the [Visual Sentinel](https://visualsentinel.com
 * 32 operations are public and need no credentials: the free tools under `/api/tools/*`, public status pages and other public data.
 * 43 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
 * 14 operations are marked `x-internal`: the health check, inbound webhooks, email tracking and other endpoints that are not part of the integration surface.
-* 15 operations are marked `deprecated`. Fourteen are retired: they always return 410 Gone and name the replacement. The fifteenth, `POST /api/onboarding/start-no-card-trial`, is session-only and still answers as its description says.
+* 14 operations are marked `deprecated`. They are retired: they always return 410 Gone and name the replacement.
 
 ## Authentication
 
@@ -41,7 +41,7 @@ Keys belong to one workspace and carry scopes of the form `{resource}:{read|writ
 
 Uptime checks for HTTP, HTTPS, KEYWORD, API and GRAPHQL monitors can run from `EU` (Europe), `US` (United States) and `ASIA` (Asia Pacific); other monitor types run from `EU`. Set them with `locations` when you create or update a monitor. Screenshots for visual checks are taken in `EU` or `ASIA` (`visualRegion`).
 
-Asia Pacific is enabled per workspace while it rolls out. `GET /api/monitoring/regions` tells you whether your workspace can use it. When it cannot, a monitor request with `ASIA` returns 400 `REGION_UNAVAILABLE`. A region outside your plan returns 403 `LOCATION_RESTRICTED`.
+Asia Pacific comes with every paid plan. `GET /api/monitoring/regions` reports whether an Asia Pacific check node is online (`apac.available`) and whether your plan allows the region (`apacAllowed`). With no node online, a monitor request with `ASIA` returns 400 `REGION_UNAVAILABLE`. A region outside your plan returns 403 `LOCATION_RESTRICTED`.
 
 ## Rate limits
 

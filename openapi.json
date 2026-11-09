@@ -8750,8 +8750,7 @@
               }
             }
           }
-        },
-        "deprecated": true
+        }
       }
     },
     "/api/settings/deduplication": {

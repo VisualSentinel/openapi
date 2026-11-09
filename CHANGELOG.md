@@ -31,7 +31,7 @@ Resync with the live spec at https://visualsentinel.com/openapi.json as served b
 ### Changed
 
 * 14 operations are marked `x-internal` (the health check, inbound webhooks, email tracking and similar endpoints).
-* `POST /api/onboarding/start-no-card-trial` is marked `deprecated` and `SessionAuth` only.
+* `POST /api/onboarding/start-no-card-trial` is `SessionAuth` only: it starts the 10-day trial without a card for a workspace owner who signed up with a work email.
 * Field and description updates across monitors, alerts, incidents, notification channels, status pages, billing and the free tools.
 * README: API access on every paid plan, operation counts, hosted reference at https://docs.visualsentinel.com/, and what `info.version` means.
 * `.well-known/api-catalog.json` matches the live catalog (service docs at https://docs.visualsentinel.com/).
