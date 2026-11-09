@@ -4,25 +4,26 @@ OpenAPI 3.1.0 specification for the [Visual Sentinel](https://visualsentinel.com
 
 * **Live spec (source of truth):** https://visualsentinel.com/openapi.json
 * **Mirror in this repo:** [`openapi.json`](./openapi.json) and [`openapi.yaml`](./openapi.yaml)
-* **Hosted reference:** https://visualsentinel.com/docs
+* **Hosted reference:** https://docs.visualsentinel.com/
 * **API keys:** Organization settings > Developer, https://visualsentinel.com/organization/settings#developer
 * **MCP server:** https://github.com/VisualSentinel/mcp-server
 * **Changelog:** [`CHANGELOG.md`](./CHANGELOG.md)
 
-`openapi.json` here is a copy of the live spec at the version in `info.version`. If the two differ, the live spec wins.
+`openapi.json` here is a copy of the live spec on the date of the latest `CHANGELOG.md` entry. If the two differ, the live spec wins.
 
 ## What the spec covers
 
-185 paths and 283 operations:
+187 paths and 287 operations:
 
-* 180 operations accept an API key: monitors (including check regions, bulk changes, alert mutes and server links), incidents and incident updates, alert rules, alerts and alert groups, notification channels, status pages (monitors, groups, servers, branding), maintenance windows, servers, service dependencies and reports.
-* 45 operations are public and need no credentials: the free tools under `/api/tools/*`, health, public status pages and other public data.
-* 44 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
-* 14 retired operations are kept as `deprecated`. They always return 410 Gone and name the replacement.
+* 183 operations accept an API key: monitors (including check regions, bulk changes, alert mutes and server links), incidents and incident updates (including resolving an incident), alert rules, alerts and alert groups, notification channels, status pages (monitors, groups, servers, branding), maintenance windows, servers, service dependencies and reports.
+* 32 operations are public and need no credentials: the free tools under `/api/tools/*`, public status pages and other public data.
+* 43 operations are session-only and marked with `SessionAuth` only: sign-in flows, billing changes, API key and member management, and the AI features (chat, AI insights, incident summaries, digests). An API key on them returns 403 `SESSION_REQUIRED`.
+* 14 operations are marked `x-internal`: the health check, inbound webhooks, email tracking and other endpoints that are not part of the integration surface.
+* 15 operations are marked `deprecated`. Fourteen are retired: they always return 410 Gone and name the replacement. The fifteenth, `POST /api/onboarding/start-no-card-trial`, is session-only and still answers as its description says.
 
 ## Authentication
 
-**API access requires the Business or Agency plan.** On other plans every API key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.
+**API access comes with every paid plan** (Solo, Starter, Business, Agency and custom Enterprise plans), including during the 10-day free trial. Without a paid plan or a running trial, every API key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.
 
 Owners and admins create keys in Organization settings > Developer. A key is `vs_` followed by 64 hexadecimal characters and is shown once. Send it as any of:
 
@@ -93,7 +94,7 @@ More examples in [`examples/`](./examples/).
 
 ## Versioning
 
-* `info.version` is the Visual Sentinel release the spec describes.
+* `info.version` is the spec's own version. A Visual Sentinel release can change the live spec without a new `info.version`, so each `CHANGELOG.md` entry names the release it was copied from.
 * New optional fields and new endpoints are not breaking. Deprecations and removals are recorded in `CHANGELOG.md`.
 
 ## Validation
