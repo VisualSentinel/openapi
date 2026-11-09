@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Visual Sentinel API",
-    "description": "Website monitoring API with six layers: uptime, performance, SSL, DNS, visual change detection and content change detection.\n\n## Authentication\n\nEndpoints accept either of two credentials unless an operation says otherwise.\n\n### 1. Session cookie (web clients)\nCall `POST /api/auth/login` with email and password to get a session cookie. The cookie is sent automatically with later requests. Session writes are CSRF protected (send `X-CSRF-Token` on POST, PUT, PATCH and DELETE).\n\n### 2. API key (agents, integrations, scripts)\nOwners and admins create keys in **Organization settings > Developer**. A key is `vs_` followed by 64 hexadecimal characters and is shown once. Send it as any of:\n- `Authorization: Bearer vs_...` header (recommended)\n- `X-API-Key: vs_...` header\n- `?api_key=vs_...` query parameter\n\n**API access requires the Business or Agency plan.** On other plans every key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.\n\nScopes have the form `{resource}:{read|write}`:\n- GET requests need `{resource}:read`. POST, PUT, PATCH and DELETE need `{resource}:write`. In the dashboard, choosing write also grants read.\n- `{resource}:*` grants read and write on one resource. `*` grants every resource.\n- A missing scope returns 403 with code `SCOPE_DENIED` and names the scope the request needs.\n- Platform admin endpoints under `/api/admin/*` are blocked for API keys whatever the scope.\n- CSRF checks are skipped for API key requests.\n- The role of the member who created the key applies, so a key made by a viewer cannot write.\n\nResources and the paths they cover:\n- `monitors`: `/api/monitors/*`, `/api/monitoring/*`, `/api/metrics/*`, `/api/dependencies/*`, `/api/reports/*`, `/api/dns/*`\n- `incidents`: `/api/incidents/*`\n- `servers`: `/api/servers/*` (the dashboard grants read only)\n- `status-pages`: `/api/status-pages/*`\n- `alerts`: `/api/alerts/*`, `/api/alert-rules/*`, `/api/alert-groups/*`\n- `channels`: `/api/notification-channels/*`, `/api/notifications/*`\n- `maintenance`: `/api/maintenance/*`\n- `organization`: `/api/organization/*`, `/api/settings/*`, `/api/plan`, `/api/integrations/*`\n- `user`: `/api/user/*`, `/api/profile/*`, `/api/onboarding/*`\n\nOther paths, for example `/api/overview`, `/api/workspace/*`, `/api/insights/*`, `/api/analytics/*` and `/api/billing/*`, resolve to the `general` resource and need a key with the `*` scope. The dashboard does not create `*` keys.\n\n### Session-only endpoints (cookie required)\nThese endpoints stay session-only by design. An API key on them returns 403 with code `SESSION_REQUIRED` (or 401 where no session exists):\n- `/api/auth/*` (login, logout, refresh, 2FA, password reset, OAuth)\n- `/api/billing/checkout`, `/api/billing/change-plan`, `/api/billing/portal` (billing changes)\n- `DELETE /api/organization`, member and invitation management under `/api/organization/members` and `/api/organization/invitations`, `POST/PUT/DELETE /api/organization/smtp`, `POST /api/organization/leave`, and `POST/PATCH/DELETE /api/api-keys` (account and access management)\n- `/api/integrations/slack/auth` (OAuth start)\n- `/api/organization/invitations/accept` (email link flow)\n- `/api/user/delete-account`\n- `/api/user/organizations/switch` (changes the session cookie)\n- `/api/chat/*`, `/api/ai/*`, `/api/incidents/{id}/summarize`, `/api/alert-groups/{id}/summarize`, `/api/reports/digest`, `POST /api/monitors/{id}/anomalies`, `POST /api/monitors/{id}/report` (AI and reporting features)\n\n## Check regions\n\nUptime checks for HTTP, HTTPS, KEYWORD, API and GRAPHQL monitors can run from `EU` (Europe), `US` (United States) and `ASIA` (Asia Pacific); other monitor types run from `EU`. Set them with `locations` on monitor create and update. Screenshots for visual checks are taken in `EU` or `ASIA` (`visualRegion`).\n\nAsia Pacific is enabled per workspace during its rollout. `GET /api/monitoring/regions` reports whether this workspace can use it. When it cannot, monitor create and update with `ASIA` return 400 with code `REGION_UNAVAILABLE`. A region outside your plan returns 403 with code `LOCATION_RESTRICTED`.\n\n## Mobile apps (iOS, Android, Mac)\n\nNative apps can use the same login flow: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <jwt>` on every later request. CSRF is skipped for Bearer tokens. Refresh tokens with `POST /api/auth/refresh`, passing the refresh token in the request body (or the `X-Client-Type: mobile` header).\n\n## Rate limits\n\n- API keys: 1,000 requests per minute per key. Over the limit the API returns 429 with code `RATE_LIMIT` and a `Retry-After` header.\n- Login: 15 attempts per 5 minutes\n- Registration: 3 per hour\n- Monitor creation: 1,000 per hour per workspace\n- Alert rule creation: 20 per minute\n- Bulk monitor changes (`/api/monitors/bulk-*`): 30 per minute per workspace\n- Public tools (`/api/tools/*`): 10 per minute per IP address\n\n## Base URL\n\nProduction: `https://visualsentinel.com`",
-    "version": "2.215.0",
+    "description": "Website monitoring API with six layers: uptime, performance, SSL, DNS, visual change detection and content change detection.\n\n## Authentication\n\nEndpoints accept either of two credentials unless an operation says otherwise.\n\n### 1. Session cookie (web clients)\nCall `POST /api/auth/login` with email and password to get a session cookie. The cookie is sent automatically with later requests. Session writes are CSRF protected (send `X-CSRF-Token` on POST, PUT, PATCH and DELETE).\n\n### 2. API key (agents, integrations, scripts)\nOwners and admins create keys in **Organization settings > Developer**. A key is `vs_` followed by 64 hexadecimal characters and is shown once. Send it as any of:\n- `Authorization: Bearer vs_...` header (recommended)\n- `X-API-Key: vs_...` header\n- `?api_key=vs_...` query parameter\n\n**API access comes with every paid plan** (Solo, Starter, Business, Agency and custom Enterprise plans). On a plan without it (Free) every key request returns 403 with code `API_ACCESS_NOT_IN_PLAN`.\n\nScopes have the form `{resource}:{read|write}`:\n- GET requests need `{resource}:read`. POST, PUT, PATCH and DELETE need `{resource}:write`. In the dashboard, choosing write also grants read.\n- `{resource}:*` grants read and write on one resource. `*` grants every resource.\n- A missing scope returns 403 with code `SCOPE_DENIED` and names the scope the request needs.\n- Platform admin endpoints under `/api/admin/*` are blocked for API keys whatever the scope.\n- CSRF checks are skipped for API key requests.\n- The role of the member who created the key applies, so a key made by a viewer cannot write.\n\nResources and the paths they cover:\n- `monitors`: `/api/monitors/*`, `/api/monitoring/*`, `/api/metrics/*`, `/api/dependencies/*`, `/api/reports/*`, `/api/dns/*`\n- `incidents`: `/api/incidents/*`\n- `servers`: `/api/servers/*`\n- `status-pages`: `/api/status-pages/*`\n- `alerts`: `/api/alerts/*`, `/api/alert-rules/*`, `/api/alert-groups/*`\n- `channels`: `/api/notification-channels/*`, `/api/notifications/*`\n- `maintenance`: `/api/maintenance/*`\n- `organization`: `/api/organization/*`, `/api/settings/*`, `/api/plan`, `/api/integrations/*`\n- `user`: `/api/user/*`, `/api/profile/*`, `/api/onboarding/*`\n\nOther paths, for example `/api/overview`, `/api/workspace/*`, `/api/insights/*`, `/api/analytics/*` and `/api/billing/*`, resolve to the `general` resource and need a key with the `*` scope. The dashboard does not create `*` keys.\n\n### Session-only endpoints (cookie required)\nThese endpoints stay session-only by design. An API key on them returns 403 with code `SESSION_REQUIRED` (or 401 where no session exists):\n- `/api/auth/*` (login, logout, refresh, 2FA, password reset, OAuth)\n- `/api/billing/checkout`, `/api/billing/change-plan`, `/api/billing/portal` (billing changes)\n- `DELETE /api/organization`, member and invitation management under `/api/organization/members` and `/api/organization/invitations`, `POST/PUT/DELETE /api/organization/smtp`, `POST /api/organization/leave`, and `POST/PATCH/DELETE /api/api-keys` (account and access management)\n- `/api/integrations/slack/auth` (OAuth start)\n- `/api/organization/invitations/accept` (email link flow)\n- `/api/user/delete-account`\n- `/api/user/organizations/switch` (changes the session cookie)\n- `/api/chat/*`, `/api/ai/*`, `/api/incidents/{id}/summarize`, `/api/alert-groups/{id}/summarize`, `/api/reports/digest`, `POST /api/monitors/{id}/anomalies`, `POST /api/monitors/{id}/report` (AI and reporting features)\n\n## Check regions\n\nUptime checks for HTTP, HTTPS, KEYWORD, API and GRAPHQL monitors can run from `EU` (Europe), `US` (United States) and `ASIA` (Asia Pacific); other monitor types run from `EU`. Set them with `locations` on monitor create and update. Screenshots for visual checks are taken in `EU` or `ASIA` (`visualRegion`).\n\nAsia Pacific is enabled per workspace during its rollout. `GET /api/monitoring/regions` reports whether this workspace can use it. When it cannot, monitor create and update with `ASIA` return 400 with code `REGION_UNAVAILABLE`. A region outside your plan returns 403 with code `LOCATION_RESTRICTED`.\n\n## Mobile apps (iOS, Android, Mac)\n\nNative apps can use the same login flow: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <jwt>` on every later request. CSRF is skipped for Bearer tokens. Refresh tokens with `POST /api/auth/refresh`, passing the refresh token in the request body (or the `X-Client-Type: mobile` header).\n\n## Rate limits\n\n- API keys: 1,000 requests per minute per key. Over the limit the API returns 429 with code `RATE_LIMIT` and a `Retry-After` header.\n- Login: 15 attempts per 5 minutes\n- Registration: 10 per hour and 30 per day per network address\n- Monitor creation: 1,000 per hour per workspace\n- Alert rule creation: 20 per minute\n- Bulk monitor changes (`/api/monitors/bulk-*`): 30 per minute per workspace\n- Free tools: 10 requests per minute per IP address, shared across `/api/tools/website-check`, `/api/tools/ssl-check`, `/api/tools/dns-check`, `/api/tools/speed-test` and the website's other free tools; `/api/tools/domain-expiry` allows 10 per 10 minutes\n\n## Base URL\n\nProduction: `https://visualsentinel.com`",
+    "version": "2.248.0",
     "contact": {
       "name": "Visual Sentinel Support",
       "url": "https://visualsentinel.com/contact",
@@ -123,11 +123,11 @@
     },
     {
       "name": "Public",
-      "description": "Unauthenticated public endpoints (blog, status pages, stats)"
+      "description": "Unauthenticated public endpoints (blog, status pages)"
     },
     {
       "name": "Webhooks",
-      "description": "Incoming webhook handlers (Paddle, WhatsApp)"
+      "description": "Incoming webhook handlers for billing and messaging providers."
     },
     {
       "name": "API Keys",
@@ -155,7 +155,8 @@
               }
             }
           }
-        }
+        },
+        "x-internal": true
       }
     },
     "/api/metrics": {
@@ -805,38 +806,6 @@
             "description": "Invalid or expired token"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Verify email (via code)",
-        "description": "Verify email address using a verification code.",
-        "operationId": "verifyEmailPost",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "token"
-                ],
-                "properties": {
-                  "token": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Email verified"
-          }
-        }
       }
     },
     "/api/auth/resend-verification": {
@@ -1306,7 +1275,7 @@
             }
           },
           "400": {
-            "description": "Validation failed. Codes include `INVALID_LOCATION`, `LOCATION_UNSUPPORTED_FOR_TYPE`, `REGION_UNAVAILABLE`, `INVALID_API_CONFIG` and `INVALID_ASSERTION_PATTERN`.",
+            "description": "Validation failed. Codes include `INVALID_LOCATION`, `LOCATION_UNSUPPORTED_FOR_TYPE`, `REGION_UNAVAILABLE`, `INVALID_API_CONFIG` (also: `apiConfig` that differs from the saved value on a monitor that is not API or GRAPHQL), `INVALID_KEYWORD_CONFIG` (an unknown field inside `keywordConfig`, or `enabled: true` for a keyword check with no words), `UNSUPPORTED_FIELD` (`retryCount`, `retryDelay`, `environment`, `priority` or `expectedHeaders`, which are not stored; `fields` lists them) and `INVALID_ASSERTION_PATTERN`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2114,7 +2083,7 @@
           "Monitors"
         ],
         "summary": "Update sub-page",
-        "description": "Update a sub-page configuration.",
+        "description": "Update a sub-page configuration: rename it, turn it on or off, reset its baseline to the newest capture, or accept one of its captures (`setBaselineFile`) as the baseline. `setBaselineFile` must name a capture of this sub-page (of the given `visualTargetId`, or of its desktop target when left out); any other file name returns 400 `BASELINE_FILE_NOT_FOUND`.",
         "operationId": "updateSubPage",
         "parameters": [
           {
@@ -2130,6 +2099,26 @@
         "responses": {
           "200": {
             "description": "Sub-page updated"
+          },
+          "400": {
+            "description": "Invalid request, or `BASELINE_FILE_NOT_FOUND` (the file is not a capture of this sub-page).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Monitor, sub-page or visual target not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -2164,7 +2153,7 @@
           "Visual Monitoring"
         ],
         "summary": "Capture sub-page screenshot",
-        "description": "Capture a baseline screenshot for a sub-page.",
+        "description": "Queue a screenshot of a sub-page now. Refused with 409 `VISUAL_DISABLED` while the monitor's visual checks are off, 403 `LIMIT_EXCEEDED` when the monitor is not within the plan's visual monitor limit (or visual checks are off and the limit is reached), 409 `SUBPAGE_NOT_ON_PLAN` for a page beyond the plan's page limit, and 409 `VISUAL_TARGET_NOT_READY` when the page's capture target is not set up yet.",
         "operationId": "captureSubPage",
         "parameters": [
           {
@@ -2189,6 +2178,26 @@
         "responses": {
           "200": {
             "description": "Screenshot captured"
+          },
+          "403": {
+            "description": "`LIMIT_EXCEEDED` (`feature: maxVisualMonitors`) or `FEATURE_RESTRICTED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not captured: `VISUAL_DISABLED`, `SUBPAGE_NOT_ON_PLAN`, `VISUAL_TARGET_NOT_READY`, or the site is down right now (`siteDown: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2267,7 +2276,7 @@
           "Visual Monitoring"
         ],
         "summary": "Capture screenshot",
-        "description": "Capture a new screenshot for visual comparison.",
+        "description": "Capture a new screenshot for visual comparison. Only for a monitor with visual checks on and within the plan's visual monitor limit, the same rules as the scheduled captures. A monitor with visual checks off is refused with 409 `VISUAL_DISABLED`, or with 403 `LIMIT_EXCEEDED` when the workspace is also at its visual monitor limit (visual checks could not be turned on). A monitor past the limit after a plan change is refused with 403 `LIMIT_EXCEEDED`.",
         "operationId": "captureScreenshot",
         "parameters": [
           {
@@ -2295,6 +2304,26 @@
                       "type": "string"
                     }
                   }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan restriction: `LIMIT_EXCEEDED` (`feature: maxVisualMonitors`, the workspace is at or over its visual monitor limit) or `FEATURE_RESTRICTED` (the plan has no visual checks).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not captured: `VISUAL_DISABLED` (visual checks are off for this monitor; turn them on first), or the site is down right now (`siteDown: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2654,6 +2683,7 @@
         }
       },
       "get": {
+        "x-internal": true,
         "tags": [
           "Monitors"
         ],
@@ -3073,7 +3103,40 @@
                     "type": "object"
                   },
                   "processes": {
-                    "type": "array"
+                    "type": "array",
+                    "maxItems": 50,
+                    "description": "Top processes, at most 50.",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "pid": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "command": {
+                          "type": "string"
+                        },
+                        "cpuPercent": {
+                          "type": "number"
+                        },
+                        "memoryPercent": {
+                          "type": "number"
+                        },
+                        "memoryBytes": {
+                          "type": "number"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "user": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -3096,7 +3159,7 @@
           "Notification Channels"
         ],
         "summary": "List notification channels",
-        "description": "Get all notification channels for the organization.",
+        "description": "Get all notification channels for the organization. Secrets in `config` come back masked: Slack, Discord and Teams `webhookUrl` and the custom webhook `url` show only the scheme and host followed by `••••••••`; webhook header values, the webhook `secret` and the Prometheus `basicAuth.password` show `••••••••`; PagerDuty `integrationKey`, Opsgenie `apiKey`, Telegram `botToken` and WhatsApp `accessToken` show their first characters followed by `••••••••`.",
         "operationId": "listNotificationChannels",
         "responses": {
           "200": {
@@ -3181,7 +3244,7 @@
           "Notification Channels"
         ],
         "summary": "Get notification channel",
-        "description": "Get details of a specific notification channel.",
+        "description": "Get details of a specific notification channel. Secrets in `config` come back masked: Slack, Discord and Teams `webhookUrl` and the custom webhook `url` show only the scheme and host followed by `••••••••`; webhook header values, the webhook `secret` and the Prometheus `basicAuth.password` show `••••••••`; PagerDuty `integrationKey`, Opsgenie `apiKey`, Telegram `botToken` and WhatsApp `accessToken` show their first characters followed by `••••••••`.",
         "operationId": "getNotificationChannel",
         "parameters": [
           {
@@ -3212,7 +3275,7 @@
           "Notification Channels"
         ],
         "summary": "Update notification channel",
-        "description": "Update an existing notification channel.",
+        "description": "Update an existing notification channel. `config` replaces the saved settings. To keep a saved secret, send back the masked value exactly as a read returned it (for a webhook header, its masked value under the same header name); the stored value is kept. An address that still contains the mask but differs from the masked saved address is rejected with 400, since the hidden part cannot be edited: send the full new address instead. A rename, or an edit whose settings are unchanged, keeps the channel's verified state.",
         "operationId": "updateNotificationChannel",
         "parameters": [
           {
@@ -3695,7 +3758,7 @@
           "Alerts"
         ],
         "summary": "Acknowledge alert",
-        "description": "Mark an alert as acknowledged.",
+        "description": "Mark an alert as acknowledged. Applies to alert-rule alerts: entries of the alert list with `canAcknowledge` true.",
         "operationId": "acknowledgeAlert",
         "parameters": [
           {
@@ -3703,9 +3766,9 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "type": "string"
+            },
+            "description": "Alert id from the alert list."
           }
         ],
         "requestBody": {
@@ -3733,6 +3796,47 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "`NOT_AN_ALERT`: the id is an incident, recovery, server alert or notice entry of the alert list (source-prefixed id). The body carries `source`, and `incidentId` for incident entries. Also returned when the alert is already acknowledged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "incident",
+                            "incident_recovery",
+                            "server",
+                            "notification"
+                          ]
+                        },
+                        "incidentId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3743,7 +3847,7 @@
           "Alerts"
         ],
         "summary": "Resolve alert",
-        "description": "Mark an alert as resolved.",
+        "description": "Mark an alert as resolved. Applies to alert-rule alerts: entries of the alert list with `canResolve` true.",
         "operationId": "resolveAlert",
         "parameters": [
           {
@@ -3751,9 +3855,9 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "type": "string"
+            },
+            "description": "Alert id from the alert list."
           }
         ],
         "requestBody": {
@@ -3778,6 +3882,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Alert"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`NOT_AN_ALERT`: the id is an incident, recovery, server alert or notice entry of the alert list (source-prefixed id). The body carries `source`, and `incidentId` for incident entries. Also returned when the alert is already resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "incident",
+                            "incident_recovery",
+                            "server",
+                            "notification"
+                          ]
+                        },
+                        "incidentId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -3878,6 +4023,212 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/alerts/summary-routing": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get where slow and speed alerts go",
+        "description": "Whether slow-response and speed-score alerts reach the workspace's channels right away or go in a weekly summary email. Down, visual change, certificate and domain alerts are not affected by this setting.",
+        "operationId": "getAlertSummaryRouting",
+        "responses": {
+          "200": {
+            "description": "Current routing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "False while the setting is not available yet: every route reads right away and PUT answers 409."
+                    },
+                    "slowResponse": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "string",
+                          "enum": [
+                            "immediate",
+                            "summary"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "chosen",
+                            "quiet_default",
+                            "default"
+                          ],
+                          "description": "chosen: someone picked it. quiet_default: the default for a workspace created after this setting was introduced that reached 3 sites. default: right away by default."
+                        }
+                      }
+                    },
+                    "speedScore": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "string",
+                          "enum": [
+                            "immediate",
+                            "summary"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "chosen",
+                            "quiet_default",
+                            "default"
+                          ],
+                          "description": "chosen: someone picked it. quiet_default: the default for a workspace created after this setting was introduced that reached 3 sites. default: right away by default."
+                        }
+                      }
+                    },
+                    "quietDefaultsAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the workspace first reached 3 sites, for a workspace that starts on the weekly summary."
+                    },
+                    "siteThreshold": {
+                      "type": "integer"
+                    },
+                    "summaryDay": {
+                      "type": "string",
+                      "enum": [
+                        "Monday"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Set where slow and speed alerts go",
+        "description": "Send slow-response or speed-score alerts right away, or put them in the weekly summary email (sent on Mondays to the email channels that get those alerts). The choice is stored even when it equals the current default. Needs write access.",
+        "operationId": "setAlertSummaryRouting",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "slowResponse": {
+                    "type": "string",
+                    "enum": [
+                      "immediate",
+                      "summary"
+                    ]
+                  },
+                  "speedScore": {
+                    "type": "string",
+                    "enum": [
+                      "immediate",
+                      "summary"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Routing saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "False while the setting is not available yet: every route reads right away and PUT answers 409."
+                    },
+                    "slowResponse": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "string",
+                          "enum": [
+                            "immediate",
+                            "summary"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "chosen",
+                            "quiet_default",
+                            "default"
+                          ],
+                          "description": "chosen: someone picked it. quiet_default: the default for a workspace created after this setting was introduced that reached 3 sites. default: right away by default."
+                        }
+                      }
+                    },
+                    "speedScore": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "string",
+                          "enum": [
+                            "immediate",
+                            "summary"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "chosen",
+                            "quiet_default",
+                            "default"
+                          ],
+                          "description": "chosen: someone picked it. quiet_default: the default for a workspace created after this setting was introduced that reached 3 sites. default: right away by default."
+                        }
+                      }
+                    },
+                    "quietDefaultsAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the workspace first reached 3 sites, for a workspace that starts on the weekly summary."
+                    },
+                    "siteThreshold": {
+                      "type": "integer"
+                    },
+                    "summaryDay": {
+                      "type": "string",
+                      "enum": [
+                        "Monday"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown field or value, or no field"
+          },
+          "409": {
+            "description": "Not available yet"
           }
         }
       }
@@ -4479,7 +4830,7 @@
           "Incidents"
         ],
         "summary": "Update incident",
-        "description": "Change an incident: status, severity, title, description, resolution notes, acknowledgement or auto-resolve. Every field is optional. `{ \"acknowledged\": true }` acknowledges; `{ \"status\": \"RESOLVED\" }` resolves.",
+        "description": "Change an incident: status, severity, title, description, resolution notes, acknowledgement or auto-resolve. Every field is optional. `{ \"acknowledged\": true }` acknowledges; `{ \"status\": \"RESOLVED\" }` resolves. A status change is sent at once to the incident's alert channels and status page subscribers, unless `notify` is false.",
         "operationId": "updateIncident",
         "parameters": [
           {
@@ -4546,6 +4897,10 @@
                     },
                     "warning": {
                       "type": "string"
+                    },
+                    "replayed": {
+                      "type": "boolean",
+                      "description": "true when this repeated a status change already made with the same actionId. Nothing was changed or sent again."
                     }
                   }
                 }
@@ -4574,6 +4929,16 @@
           },
           "404": {
             "description": "Incident not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The actionId was already used on another incident.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4680,6 +5045,10 @@
                     },
                     "warning": {
                       "type": "string"
+                    },
+                    "replayed": {
+                      "type": "boolean",
+                      "description": "true when this repeated a status change already made with the same actionId. Nothing was changed or sent again."
                     }
                   }
                 }
@@ -4708,6 +5077,16 @@
           },
           "404": {
             "description": "Incident not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The actionId was already used on another incident.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4831,6 +5210,16 @@
           "200": {
             "description": "Status page created. Body: `{ statusPage, message }`."
           },
+          "400": {
+            "description": "Name or slug missing, or the request body is not valid JSON (`Invalid JSON body`) or is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "402": {
             "description": "Trial expired or workspace suspended"
           },
@@ -4889,6 +5278,16 @@
         "responses": {
           "200": {
             "description": "Status page updated"
+          },
+          "400": {
+            "description": "Invalid uptime or incident history window, invalid sort mode, invalid theme, or the request body is not valid JSON (`Invalid JSON body`) or is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -5035,7 +5434,7 @@
             }
           },
           "400": {
-            "description": "Neither `monitorId` nor `monitorIds` provided (`Monitor ID is required`)",
+            "description": "Neither `monitorId` nor `monitorIds` provided (`Monitor ID is required`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5056,6 +5455,110 @@
           },
           "404": {
             "description": "Status page not found, or none of the requested monitors belong to the caller's organization (`No valid monitors found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Status Pages"
+        ],
+        "summary": "Update display options for many status page monitors",
+        "description": "Set which details are shown (uptime graph, response time, SSL certificate) for every monitor linked to the status page in one request, or only for the monitors listed in `monitorIds`. Options left out are not changed. Requires the Owner, Admin or Developer role.",
+        "operationId": "bulkUpdateStatusPageMonitors",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Status page ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "At least one of `showGraph`, `showResponseTime` or `showSSL` is required. Other fields are rejected.",
+                "additionalProperties": false,
+                "properties": {
+                  "showGraph": {
+                    "type": "boolean",
+                    "description": "Show the uptime graph"
+                  },
+                  "showResponseTime": {
+                    "type": "boolean",
+                    "description": "Show response time"
+                  },
+                  "showSSL": {
+                    "type": "boolean",
+                    "description": "Show SSL certificate status"
+                  },
+                  "monitorIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 2000,
+                    "description": "Only change these linked monitors (monitor IDs, not link IDs). Leave out to change every monitor on the page. IDs not linked to this page are ignored.",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Display options updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "integer",
+                      "description": "Number of linked monitors updated"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No display option given, a value is not a boolean, an unknown field was sent (`Invalid display options`), or the request body is not valid JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller does not have the Owner, Admin or Developer role, the seat is paused by the plan (code `SEAT_PAUSED_BY_PLAN`), or the CSRF token is missing or invalid for a cookie session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Status page not found in the caller's organization",
             "content": {
               "application/json": {
                 "schema": {
@@ -5186,6 +5689,16 @@
               }
             }
           },
+          "400": {
+            "description": "Unknown group for this status page, or the request body is not valid JSON (`Invalid JSON body`) or is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Caller does not have the Owner, Admin or Developer role, or the seat is paused by the plan (code `SEAT_PAUSED_BY_PLAN`)",
             "content": {
@@ -5249,6 +5762,16 @@
         "responses": {
           "200": {
             "description": "Custom domain configured"
+          },
+          "400": {
+            "description": "Domain missing or invalid, or the request body is not valid JSON (`Invalid JSON body`) or is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -6045,6 +6568,110 @@
         }
       }
     },
+    "/api/organization/feedback": {
+      "post": {
+        "tags": [
+          "Organization"
+        ],
+        "summary": "Report a problem to Visual Sentinel",
+        "description": "Send the Visual Sentinel team a report about a false alert, a bug or a missing feature, optionally for one monitor or incident of the workspace. The monitor and incident must belong to the workspace. 20 reports an hour per workspace. Needs the organization:write scope.",
+        "operationId": "sendFeedbackReport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "note"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "false_positive",
+                      "bug",
+                      "missing_feature"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1000
+                  },
+                  "monitorId": {
+                    "type": "string"
+                  },
+                  "incidentId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "report": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "false_positive",
+                            "bug",
+                            "missing_feature"
+                          ]
+                        },
+                        "monitorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "incidentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, or the incident belongs to another monitor"
+          },
+          "404": {
+            "description": "Monitor or incident not found in this workspace"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
     "/api/organization/logo": {
       "post": {
         "tags": [
@@ -6562,7 +7189,7 @@
           "Billing"
         ],
         "summary": "Create checkout session",
-        "description": "Create a Paddle checkout session for subscription purchase.",
+        "description": "Create a checkout session for a subscription purchase.",
         "operationId": "createCheckout",
         "security": [
           {
@@ -6631,7 +7258,7 @@
           "Billing"
         ],
         "summary": "Get billing portal URL",
-        "description": "Get a Paddle customer portal URL for managing subscriptions.",
+        "description": "Get the billing portal URL for managing a subscription.",
         "operationId": "getBillingPortal",
         "security": [
           {
@@ -6658,21 +7285,6 @@
         }
       }
     },
-    "/api/billing/ai-usage": {
-      "get": {
-        "tags": [
-          "Billing"
-        ],
-        "summary": "Get AI usage",
-        "description": "Get AI feature usage for the current billing period.",
-        "operationId": "getAiUsage",
-        "responses": {
-          "200": {
-            "description": "AI usage data"
-          }
-        }
-      }
-    },
     "/api/integrations/google/authorize": {
       "get": {
         "tags": [
@@ -6690,6 +7302,7 @@
     },
     "/api/integrations/google/callback": {
       "get": {
+        "x-internal": true,
         "tags": [
           "Integrations"
         ],
@@ -6770,7 +7383,7 @@
           "Tools"
         ],
         "summary": "Website health check",
-        "description": "Free tool to check website availability, response time, SSL, headers, and more. Rate limited to 10 requests/minute per IP.",
+        "description": "Free tool to check whether a website responds, from each check region, with its response time and certificate. Rate limited to 10 requests/minute per IP. With visual=1 it also tries one homepage screenshot (3 per 10 minutes per IP).",
         "operationId": "websiteCheck",
         "security": [],
         "parameters": [
@@ -6782,6 +7395,18 @@
               "type": "string"
             },
             "description": "URL to check (https:// prefix added if missing)"
+          },
+          {
+            "name": "visual",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Also capture one homepage screenshot (the address is reduced to its origin)."
           }
         ],
         "responses": {
@@ -6796,22 +7421,174 @@
                       "type": "string"
                     },
                     "status": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "UP",
+                        "DEGRADED",
+                        "DOWN"
+                      ]
                     },
                     "responseTime": {
-                      "type": "integer"
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
                     },
                     "statusCode": {
-                      "type": "integer"
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
                     },
-                    "ssl": {
-                      "type": "object"
+                    "sslValid": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
                     },
-                    "headers": {
-                      "type": "object"
+                    "sslDaysRemaining": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
                     },
-                    "dns": {
-                      "type": "object"
+                    "sslIssuer": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dnsTime": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "regions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "region": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "UP",
+                              "DOWN"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "statusCode": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "error": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "checkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "screenshot": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "visual=1 only: a data URL, or null when no screenshot was taken."
+                    },
+                    "screenshotUnavailable": {
+                      "type": "boolean",
+                      "description": "visual=1 only: screenshots are switched off for now."
+                    },
+                    "screenshotBlocked": {
+                      "type": "string",
+                      "enum": [
+                        "bot_protection"
+                      ],
+                      "description": "visual=1 only: the site's bot protection showed a verification page instead of the site."
+                    },
+                    "screenshotLimited": {
+                      "type": "boolean",
+                      "description": "visual=1 only: this caller reached the screenshot limit."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The address cannot be checked: missing, not a valid URL, or not a public http/https address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "blocked_target"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The site could not be checked: its name does not resolve (not_found, with lookup and an optional suggestion), or its bot protection blocked the check in every region, answering each with a verification page (bot_protection).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "not_found",
+                        "bot_protection"
+                      ]
+                    },
+                    "lookup": {
+                      "type": "string",
+                      "enum": [
+                        "no_such_name",
+                        "lookup_failed"
+                      ]
+                    },
+                    "suggestion": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   }
                 }
@@ -6819,7 +7596,54 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded"
+            "description": "Rate limit exceeded. Retry-After gives the seconds to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "rate_limited"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Our checker could not finish this check (check_error). Nothing is known about the site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "check_error"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -6927,6 +7751,16 @@
           },
           "429": {
             "description": "Rate limit exceeded"
+          },
+          "503": {
+            "description": "The test did not run. `SPEED_TEST_SERVICE_BUSY`: the testing service was busy, rate limited or timed out (not a problem with the page); a `Retry-After` header is sent, try again in a few minutes. `PAGE_NOT_TESTABLE`: the page could not be loaded for testing. `SPEED_TEST_UNAVAILABLE` and `SPEED_TEST_FAILED`: the speed test is unavailable on our side. Failures are sent with `Cache-Control: no-store`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -7028,6 +7862,7 @@
     },
     "/api/analytics/journeys": {
       "post": {
+        "x-internal": true,
         "tags": [
           "Analytics"
         ],
@@ -7381,7 +8216,7 @@
           "API Keys"
         ],
         "summary": "Create API key",
-        "description": "Generate a new API key for programmatic access. Requires Business plan or higher.",
+        "description": "Generate a new API key for programmatic access. Requires a paid plan: API access comes with every paid plan (Solo, Starter, Business, Agency and custom Enterprise plans).",
         "operationId": "createApiKey",
         "security": [
           {
@@ -7775,8 +8610,13 @@
           "Onboarding"
         ],
         "summary": "Start no-card trial",
-        "description": "Start a 7-day free trial on the selected plan without requiring a credit card. Requires write access. The organization must not already have an active subscription or Paddle subscription.",
+        "description": "When trials without a card are available, starts a 10-day trial of a paid plan with no card, for the owner of an eligible workspace who signed up with a work email and has a verified address. Signed-in sessions only; API keys and support sessions are refused. Otherwise it answers with a code that says why (for example BUSINESS_EMAIL_REQUIRED, TRIAL_ALREADY_USED or NO_CARD_TRIAL_UNAVAILABLE); where the workspace can still have a trial with a card, start it from checkout instead (POST /api/billing/checkout). A request for a trial that is already running answers 200 with idempotent true and changes nothing.\n\nCodes: NO_CARD_TRIAL_UNAVAILABLE (403), OWNER_REQUIRED (403), BUSINESS_EMAIL_REQUIRED (403), EMAIL_VERIFICATION_REQUIRED (403), TRIAL_ALREADY_USED (409), TRIAL_DOMAIN_USED (409).",
         "operationId": "startNoCardTrial",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7784,7 +8624,8 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "plan"
+                  "plan",
+                  "triggerSource"
                 ],
                 "properties": {
                   "plan": {
@@ -7795,7 +8636,22 @@
                       "business",
                       "agency"
                     ],
-                    "description": "Plan to trial (legacy names 'enterprise'/'professional' are accepted)"
+                    "description": "The plan to try, at its normal limits (legacy names 'enterprise' and 'professional' are accepted; 'free' is refused)."
+                  },
+                  "triggerSource": {
+                    "type": "string",
+                    "enum": [
+                      "monitor_cap_hit",
+                      "feature_gate_clicked",
+                      "first_monitor_onboarding",
+                      "lifecycle_email_cta",
+                      "admin_grant",
+                      "dashboard_cta",
+                      "billing_cta",
+                      "onboarding_select_plan",
+                      "paid_decision_card"
+                    ],
+                    "description": "Where the request came from. The plan step sends onboarding_select_plan."
                   }
                 }
               }
@@ -7804,7 +8660,7 @@
         },
         "responses": {
           "200": {
-            "description": "Trial started",
+            "description": "Trial started, or already running (idempotent true)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7813,8 +8669,13 @@
                     "success": {
                       "type": "boolean"
                     },
+                    "idempotent": {
+                      "type": "boolean",
+                      "description": "True when the trial was already running; nothing changed."
+                    },
                     "plan": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "The trial's plan: SOLO, STARTER, BUSINESS or AGENCY."
                     },
                     "trialEndsAt": {
                       "type": "string",
@@ -7829,19 +8690,65 @@
             }
           },
           "400": {
-            "description": "Invalid plan name"
+            "description": "Invalid body: plan must be solo, starter, business or agency, and triggerSource is required"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Not signed in"
           },
           "403": {
-            "description": "Email address not verified yet (code EMAIL_VERIFICATION_REQUIRED), or no write access"
+            "description": "An API key (code SESSION_REQUIRED), a support session (code NOT_DURING_SUPPORT_SESSION), a missing or invalid CSRF token, or a refusal: NO_CARD_TRIAL_UNAVAILABLE (this workspace cannot have a trial without a card), OWNER_REQUIRED (only the workspace owner can start it), BUSINESS_EMAIL_REQUIRED (not available for this email address; where the workspace can still have a trial, a trial with a card starts from checkout), EMAIL_VERIFICATION_REQUIRED (verify the email address first)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Plain text to show the person."
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "NO_CARD_TRIAL_UNAVAILABLE",
+                        "OWNER_REQUIRED",
+                        "BUSINESS_EMAIL_REQUIRED",
+                        "EMAIL_VERIFICATION_REQUIRED",
+                        "SESSION_REQUIRED",
+                        "NOT_DURING_SUPPORT_SESSION"
+                      ],
+                      "description": "Why the request was refused. Clients branch on this, not on the text. A missing or invalid CSRF token has no code."
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Organization not found"
           },
           "409": {
-            "description": "Organization already has an active subscription or trial, or the free trial was already used by this person or workspace (code TRIAL_ALREADY_USED)"
+            "description": "A refusal: TRIAL_ALREADY_USED (this account or workspace already had a trial or a subscription) or TRIAL_DOMAIN_USED (the company already had a trial or a plan)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Plain text to show the person."
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "TRIAL_ALREADY_USED",
+                        "TRIAL_DOMAIN_USED"
+                      ],
+                      "description": "Why the trial was refused. Clients branch on this, not on the text."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -8143,44 +9050,6 @@
         }
       }
     },
-    "/api/public/stats": {
-      "get": {
-        "tags": [
-          "Public"
-        ],
-        "summary": "Get public statistics",
-        "description": "Get public platform statistics (total monitors, checks performed, etc.).",
-        "operationId": "getPublicStats",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Public stats",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "available": {
-                      "type": "boolean",
-                      "description": "False when counts could not be read. Clients should omit unavailable or zero proof counts."
-                    },
-                    "totalMonitors": {
-                      "type": "integer"
-                    },
-                    "totalChecks": {
-                      "type": "integer"
-                    },
-                    "totalUsers": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/public/blog": {
       "get": {
         "tags": [
@@ -8253,6 +9122,7 @@
     },
     "/api/public/blog/{slug}/view": {
       "post": {
+        "x-internal": true,
         "tags": [
           "Public"
         ],
@@ -8444,6 +9314,7 @@
     },
     "/api/public/resolve-domain": {
       "get": {
+        "x-internal": true,
         "tags": [
           "Public"
         ],
@@ -8473,6 +9344,7 @@
     },
     "/api/webhooks/paddle": {
       "post": {
+        "x-internal": true,
         "tags": [
           "Webhooks"
         ],
@@ -8489,6 +9361,7 @@
     },
     "/api/webhooks/whatsapp": {
       "get": {
+        "x-internal": true,
         "tags": [
           "Webhooks"
         ],
@@ -8503,6 +9376,7 @@
         }
       },
       "post": {
+        "x-internal": true,
         "tags": [
           "Webhooks"
         ],
@@ -8519,6 +9393,7 @@
     },
     "/api/content-proxy": {
       "get": {
+        "x-internal": true,
         "tags": [
           "System"
         ],
@@ -8544,6 +9419,7 @@
     },
     "/api/verify-domain": {
       "get": {
+        "x-internal": true,
         "tags": [
           "System"
         ],
@@ -8570,6 +9446,7 @@
     },
     "/api/client-error": {
       "post": {
+        "x-internal": true,
         "tags": [
           "System"
         ],
@@ -8618,6 +9495,7 @@
     },
     "/api/email-tracking/open/{messageId}": {
       "get": {
+        "x-internal": true,
         "tags": [
           "System"
         ],
@@ -8644,6 +9522,7 @@
     },
     "/api/email-tracking/click/{messageId}": {
       "get": {
+        "x-internal": true,
         "tags": [
           "System"
         ],
@@ -9109,7 +9988,7 @@
           "Incidents"
         ],
         "summary": "Post incident update",
-        "description": "Post a status update on an incident. It shows on the incident page and on every status page that shows this incident, and the incident status changes to match. Needs the owner or admin role.",
+        "description": "Post a status update on an incident. It shows on the incident page and on every status page that shows this incident, and the incident status changes to match. It is sent at once to the incident's alert channels and status page subscribers, unless `notify` is false. Needs the owner or admin role.",
         "operationId": "createIncidentUpdate",
         "parameters": [
           {
@@ -9148,6 +10027,16 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2000
+                  },
+                  "notify": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true (the default) sends the update at once to the incident's alert channels and to the subscribers of its status pages. false posts it without notifying anyone; it still shows on the incident timeline and on the status page. PagerDuty, Opsgenie and Prometheus only receive an update that closes or reopens an alert a check opened."
+                  },
+                  "actionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "A UUID you choose for this update. Posting again with the same actionId returns the update already posted (200) and sends nothing. An actionId already used on another incident returns 409."
                   }
                 }
               }
@@ -9155,6 +10044,62 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "This actionId was already posted. Returns that update; nothing is posted or sent again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "notified": {
+                      "type": "boolean",
+                      "description": "false when the update was posted without notifying anyone."
+                    },
+                    "authorId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "author": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "201": {
             "description": "Update posted",
             "content": {
@@ -9171,6 +10116,10 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "notified": {
+                      "type": "boolean",
+                      "description": "false when the update was posted without notifying anyone."
                     },
                     "authorId": {
                       "type": [
@@ -9229,6 +10178,129 @@
           },
           "404": {
             "description": "Incident not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The actionId was already used on another incident.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/monitors/{id}/alert-email-mute": {
+      "delete": {
+        "tags": [
+          "Monitors"
+        ],
+        "summary": "Resume a monitor's alert email to an unsubscribed address",
+        "description": "Turns a monitor's alert email back on for an address that used the unsubscribe link of one of its alert emails. Each unsubscribe is listed in `emailMutes` of GET /api/notification-channels. Other addresses and channels are not affected. Requires the Owner, Admin or Developer role; API keys need the `monitors:write` scope.",
+        "operationId": "resumeMonitorAlertEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Monitor ID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "The address that unsubscribed."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Alert email to the address is on again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "resumed"
+                  ],
+                  "properties": {
+                    "resumed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No address, or a body that is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or no valid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Viewer or Member role, paused seat (code `SEAT_PAUSED_BY_PLAN`), missing or invalid CSRF token, no membership in the organization, or the API key lacks the `monitors:write` scope or plan API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Monitor not found, or the address is not unsubscribed from it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -10480,6 +11552,184 @@
         }
       }
     },
+    "/api/incidents/{id}/resolve": {
+      "get": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "Ways to resolve an incident",
+        "description": "The actions this incident accepts, with the suggested limit and what each stop would turn off. Needs `incidents:read`.",
+        "operationId": "getIncidentResolveOptions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolve options",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResolveOptions"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Incident not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "Resolve an incident, optionally changing its limit or turning its check off",
+        "description": "Closes the incident, after saving the chosen change to the site's own settings (the same save as PUT /api/monitors/{id}, so it can be undone there; the response lists the undo requests). An API key needs `incidents:write`, plus `monitors:write` for every action except `resolve`. Outages and possible malware never accept stop_alerting. The resolve is told to the incident's alert channels and status page subscribers as \"This incident has been resolved.\" unless `notify` is false; the settings change is not shown to them.",
+        "operationId": "resolveIncident",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved (and the setting saved)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "incident": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "settingChanged": {
+                      "type": "boolean"
+                    },
+                    "summary": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "What changed, in plain words."
+                    },
+                    "undo": {
+                      "type": "array",
+                      "description": "The requests that put the setting back.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "PUT"
+                            ]
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "body": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    },
+                    "warning": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown action, or a limit missing or out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Read-only role, or an API key without `incidents:write` (or `monitors:write` for a settings change)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Incident not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This incident does not offer that action (for example stop_alerting on an outage or possible malware), or it is already resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/alerts/deliveries": {
       "get": {
         "tags": [
@@ -10690,7 +11940,7 @@
             }
           },
           "400": {
-            "description": "Invalid name or tag rule (`Enter a valid group name and tag`)",
+            "description": "Invalid name or tag rule (`Enter a valid group name and tag`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10711,6 +11961,16 @@
           },
           "404": {
             "description": "Status page not found in the caller's organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A group with this name already exists on this status page (`A group with this name already exists on this status page.`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10788,7 +12048,7 @@
             }
           },
           "400": {
-            "description": "Invalid body or duplicate IDs (`Invalid group order`)",
+            "description": "Invalid body or duplicate IDs (`Invalid group order`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10896,7 +12156,7 @@
             }
           },
           "400": {
-            "description": "Invalid body (`Invalid group settings`)",
+            "description": "Invalid body (`Invalid group settings`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10917,6 +12177,16 @@
           },
           "404": {
             "description": "Group not found on this status page in the caller's organization (`Status page group not found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A group with this name already exists on this status page (`A group with this name already exists on this status page.`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11114,7 +12384,7 @@
             }
           },
           "400": {
-            "description": "Neither `serverId` nor `serverIds` provided (`Server ID is required`)",
+            "description": "Neither `serverId` nor `serverIds` provided (`Server ID is required`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11212,6 +12482,16 @@
                       "$ref": "#/components/schemas/StatusPageServerLink"
                     }
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body is not valid JSON (`Invalid JSON body`) or is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -11374,7 +12654,7 @@
             }
           },
           "400": {
-            "description": "Invalid body (`Invalid monitor order`) or duplicate IDs (`Monitor order contains duplicates`)",
+            "description": "Invalid body (`Invalid monitor order`) or duplicate IDs (`Monitor order contains duplicates`). Also returned when the request body is not valid JSON.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12686,6 +13966,58 @@
             "type": "boolean",
             "default": true,
             "description": "Check the website’s www or bare-domain twin every 15 minutes without using a site slot. Ignored for other monitor types."
+          },
+          "visualChange": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Returned by GET /api/monitors only: present for an enabled monitor whose status is `ui-changed`, otherwise null. The unreviewed page change: how much changed, since when, and the capture an approval would accept. `thumbUrl` is an authenticated preview that needs a browser session; API keys cannot load it.",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "visual_change"
+                ]
+              },
+              "percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "incidentId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "screenshotId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "visualTargetId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "thumbUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
           }
         }
       },
@@ -12947,11 +14279,11 @@
             "description": "Report schedule."
           },
           "notificationRepeatInterval": {
-            "default": 60,
+            "default": 360,
             "type": "integer",
             "minimum": 0,
             "maximum": 1440,
-            "description": "Minutes between repeat alerts while a problem continues. 0 sends one alert."
+            "description": "Minutes until a reminder while a problem continues, then one reminder a day. 0 sends no reminders."
           },
           "performanceThresholds": {
             "type": "object",
@@ -12977,7 +14309,7 @@
           "visualConfig": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Visual check settings: `threshold` (percent of changed pixels that counts as a change), `checkInterval` (seconds, at least 900), `viewport` `{ width, height }`, `fullPage`, `excludeSelectors`, video and GIF handling, and `auth` for pages behind a login. Up to 16 KB."
+            "description": "Visual check settings: `threshold` (percent of changed pixels that counts as a change, 0 to 100; when omitted, 5 percent applies. The Add monitor form in the app saves 10), `checkInterval` (seconds, at least 900), `viewport` `{ width, height }`, `fullPage`, `excludeSelectors`, video and GIF handling, and `auth` for pages behind a login. Up to 16 KB."
           },
           "dnsEnabled": {
             "type": "boolean",
@@ -13068,7 +14400,7 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
+            "maxLength": 200,
             "description": "Display name."
           },
           "description": {
@@ -13259,7 +14591,8 @@
               "threshold": {
                 "type": "number",
                 "minimum": 0,
-                "maximum": 100
+                "maximum": 100,
+                "description": "Percent of changed pixels that counts as a change, 0 to 100. A monitor whose visual settings have no threshold uses 5 percent. The Add monitor form in the app saves 10."
               },
               "checkInterval": {
                 "type": "integer",
@@ -13417,7 +14750,6 @@
             "type": "object",
             "properties": {
               "enabled": {
-                "default": false,
                 "type": "boolean"
               },
               "mustContain": {
@@ -13440,7 +14772,8 @@
                 "type": "boolean"
               }
             },
-            "description": "Keyword checks on the response: `mustContain` and `mustNotContain` lists, `caseSensitive`, and `enabled`."
+            "description": "Keyword checks on the response: `mustContain` and `mustNotContain` lists, `caseSensitive`, and `enabled`. Fields left out keep their saved value (left out, `enabled` keeps the check on or off). `enabled: false` switches the check off and keeps its words; `enabled: true` switches it back on with them. Unknown fields are refused.",
+            "additionalProperties": false
           },
           "apiConfig": {
             "anyOf": [
@@ -13451,7 +14784,7 @@
                 "type": "null"
               }
             ],
-            "description": "API and GRAPHQL monitors: response checks (`assertions`), `responseSlo`, `responseFormat`, response body storage and, for GRAPHQL, the `graphql` query. Replaces the stored value."
+            "description": "API and GRAPHQL monitors: response checks (`assertions`), `responseSlo`, `responseFormat`, response body storage and, for GRAPHQL, the `graphql` query. Replaces the stored value. On other monitor types it is refused (`INVALID_API_CONFIG`) unless it is null, empty or equal to the saved value."
           },
           "contentConfig": {
             "type": [
@@ -13629,7 +14962,7 @@
             "additionalProperties": {
               "type": "boolean"
             },
-            "description": "DNS record types to watch, as `{ \"A\": true, \"MX\": true }`."
+            "description": "DNS record types to watch, as `{ \"A\": true, \"MX\": true }`. While DNS checks are on, types left out keep their setting. When the same request turns DNS checks on (`dnsEnabled: true`), or no types were saved yet, the types set to true are the whole selection."
           },
           "performanceThresholds": {
             "type": [
@@ -13727,7 +15060,7 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 1440,
-            "description": "Minutes between repeat alerts while a problem continues. 0 sends one alert."
+            "description": "Minutes until a reminder while a problem continues, then one reminder a day. 0 sends no reminders."
           },
           "expectedAssertions": {
             "type": "array",
@@ -14207,7 +15540,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "description": "An alert-rule alert's id, or a source-prefixed id (incident_down_, incident_recovery_, server_alert_, notification_) for history entries."
           },
           "type": {
             "type": "string"
@@ -14246,6 +15579,24 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "alert",
+              "incident",
+              "incident_recovery",
+              "server",
+              "notification"
+            ]
+          },
+          "canAcknowledge": {
+            "type": "boolean",
+            "description": "POST /api/alerts/{id}/acknowledge applies (an open alert-rule alert)."
+          },
+          "canResolve": {
+            "type": "boolean",
+            "description": "POST /api/alerts/{id}/resolve applies (an alert-rule alert not yet resolved)."
           }
         }
       },
@@ -14905,7 +16256,7 @@
           },
           "config": {
             "type": "object",
-            "description": "Channel-specific configuration"
+            "description": "Channel-specific configuration. Secret values come back masked (see the channel read endpoints); sending a masked value back on update keeps the stored one."
           },
           "createdAt": {
             "type": "string",
@@ -15656,6 +17007,16 @@
           "autoResolve": {
             "type": "boolean",
             "description": "false keeps this incident open after the monitor recovers, until someone resolves it."
+          },
+          "notify": {
+            "type": "boolean",
+            "default": true,
+            "description": "Applies when `status` changes the incident's status. true (the default) sends the change at once to the incident's alert channels and to the subscribers of its status pages. false records it on the incident timeline without notifying anyone; the status page still shows the new status. PagerDuty, Opsgenie and Prometheus only receive a close or a reopen of an alert that a check opened."
+          },
+          "actionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A UUID you choose for a status change. Sending the request again with the same actionId changes and announces the incident only once: the repeat returns 200 and sends nothing, and may include `replayed: true`. An actionId already used on another incident returns 409."
           }
         }
       },
@@ -16080,6 +17441,44 @@
               "none"
             ],
             "description": "`standard` sets certificate reminders to 13, 3 and 1 days before expiry and domain reminders to 50, 13, 3 and 1 days; `none` clears both lists."
+          },
+          "visualSummary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "threshold"
+            ],
+            "description": "Small visual changes in a summary email instead of an alert. Merged into each monitor's visual settings.",
+            "properties": {
+              "threshold": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.1,
+                "maximum": 100,
+                "description": "Include changes from this percent of the page. `null` turns the summary off."
+              },
+              "cadence": {
+                "type": "string",
+                "enum": [
+                  "weekly",
+                  "daily"
+                ]
+              }
+            }
+          },
+          "visualAlertLevel": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 30,
+            "description": "Alert when this percent of the page changes (each monitor's visual alert level). Sent only to monitors with visual checks on, or turned on in the same request; it never turns visual checks on. A monitor where it was left alone is listed in `skipped` with that reason, even when its other settings changed. Like the monitor's own settings, a level at or below the monitor's small-changes summary level is saved and the summary is paused; such a monitor is also listed in `skipped` with that reason."
+          },
+          "maxResponseTime": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 30000,
+            "description": "Slow-response limit in milliseconds: a check that takes longer counts as slow."
           }
         }
       },
@@ -16156,7 +17555,7 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 1440,
-                "description": "Minutes between reminders while a problem lasts; 0 sends none."
+                "description": "Minutes until a reminder while a problem continues, then one reminder a day. 0 sends no reminders."
               },
               "visualCheckInterval": {
                 "type": "integer",
@@ -16555,7 +17954,7 @@
               },
               "notificationRepeatInterval": {
                 "type": "integer",
-                "description": "Minutes between reminders; 0 sends none."
+                "description": "Minutes until a reminder, then one a day; 0 sends no reminders."
               },
               "alertsMutedUntil": {
                 "type": [
@@ -17085,10 +18484,12 @@
               "properties": {
                 "event": {
                   "type": "string",
+                  "description": "`update` is what a person's manual close, update or reopen sent.",
                   "enum": [
                     "opened",
                     "reminder",
                     "recovered",
+                    "update",
                     "other"
                   ]
                 },
@@ -17409,10 +18810,12 @@
           },
           "event": {
             "type": "string",
+            "description": "`update` is what a person's manual close, update or reopen sent. Records made before this value existed say `other` with alertType INCIDENT_UPDATE.",
             "enum": [
               "opened",
               "reminder",
               "recovered",
+              "update",
               "other"
             ]
           },
@@ -17762,6 +19165,224 @@
             }
           }
         ]
+      },
+      "IncidentResolveOptions": {
+        "type": "object",
+        "description": "The ways an incident can be closed. Every incident can be resolved. Some kinds also offer a new limit, turning the check off for the site, or pausing the site. An outage never offers stop_alerting, and neither does possible malware.",
+        "properties": {
+          "incidentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "down",
+              "slow",
+              "ssl",
+              "performance",
+              "visual",
+              "content",
+              "other_address",
+              "domain",
+              "security",
+              "server",
+              "reported",
+              "other"
+            ]
+          },
+          "open": {
+            "type": "boolean",
+            "description": "false once the incident is resolved. A resolved incident still accepts change_limit and stop_alerting."
+          },
+          "monitorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "monitorName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "resolve",
+                "change_limit",
+                "stop_alerting",
+                "pause_monitor"
+              ]
+            },
+            "description": "The actions POST accepts for this incident now."
+          },
+          "changeLimit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "setting": {
+                    "type": "string",
+                    "enum": [
+                      "slow_limit",
+                      "api_response_limit",
+                      "alert_wait",
+                      "visual_sensitivity"
+                    ],
+                    "description": "slow_limit is the monitor's maxResponseTime, api_response_limit its apiConfig.responseSlo, alert_wait its alertDelay, visual_sensitivity its visualConfig.threshold."
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "seconds",
+                      "minutes",
+                      "percent"
+                    ],
+                    "description": "The unit of `limit` in POST."
+                  },
+                  "current": {
+                    "type": "number"
+                  },
+                  "suggested": {
+                    "type": "number",
+                    "description": "For a slow site: a fifth above the 95th percentile of its answers over the last 7 days, rounded up to half a second. For a page change: just above the change that opened the incident."
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "step": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "One line for the choice."
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "help": {
+                    "type": "string"
+                  },
+                  "settingsSection": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "stopAlerting": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "setting": {
+                    "type": "string",
+                    "enum": [
+                      "ssl_check",
+                      "speed_test",
+                      "phone_screenshots",
+                      "page_screenshots",
+                      "word_checks",
+                      "other_address",
+                      "domain_expiry"
+                    ],
+                    "description": "ssl_check is sslCheck, speed_test performanceEnabled, phone_screenshots visualConfig.mobileViewport.enabled, page_screenshots the sub-page's enabled, word_checks the content words, other_address checkOtherAddress, domain_expiry domainExpiryEnabled on every site of the domain."
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "consequence": {
+                    "type": "string",
+                    "description": "What will no longer be watched."
+                  },
+                  "undo": {
+                    "type": "string"
+                  },
+                  "settingsSection": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "pauseMonitor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "consequence": {
+                    "type": "string"
+                  },
+                  "undo": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "notOffered": {
+            "type": "object",
+            "description": "Why change_limit or stop_alerting is not offered, when a person might expect it.",
+            "properties": {
+              "change_limit": {
+                "type": "string"
+              },
+              "stop_alerting": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "IncidentResolveRequest": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "resolve",
+              "change_limit",
+              "stop_alerting",
+              "pause_monitor"
+            ],
+            "description": "resolve closes it now; it opens again next time. change_limit saves `limit` as the site's new limit, then resolves. stop_alerting turns this check off for the site, then resolves. pause_monitor pauses the site's checks, then resolves (outages only)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Required for change_limit, in the unit and range GET returns."
+          },
+          "notify": {
+            "type": "boolean",
+            "description": "false resolves without telling the incident's alert channels and status page subscribers. Default true."
+          },
+          "actionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Sent again with a retry, the resolve is not applied or announced twice."
+          }
+        }
       }
     }
   },

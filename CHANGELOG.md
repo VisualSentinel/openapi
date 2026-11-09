@@ -6,6 +6,36 @@ This file tracks changes to the **spec itself**: added or removed endpoints, fie
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the spec uses [Semantic Versioning](https://semver.org/) in `info.version`.
 
+## [2.248.0] - 2026-11-09
+
+Resync with the live spec at https://visualsentinel.com/openapi.json as served by Visual Sentinel 2.301.0 (the spec's own `info.version` reads 2.248.0). The mirror was last synced at 2.215.0. 187 paths, 287 operations.
+
+### Fixed
+
+* Authentication notes and `POST /api/api-keys`: API access comes with every paid plan (Solo, Starter, Business, Agency and custom Enterprise plans), not only Business and Agency.
+* `POST /api/onboarding/start-no-card-trial` describes the current trial: when trials without a card are available, 10 days of a paid plan with no card, for the owner of an eligible workspace who signed up with a work email and has a verified address. Signed-in sessions only; it lists its refusal codes. It used to describe a 7-day trial with no work-email condition.
+* Rate limit notes for registration and the free tools are updated.
+
+### Added
+
+* `GET` and `POST /api/incidents/{id}/resolve` (ways to resolve an incident, and resolving it), with the `IncidentResolveOptions` and `IncidentResolveRequest` schemas.
+* `GET` and `PUT /api/alerts/summary-routing` (whether slow-response and speed-score alerts go out right away or in the weekly summary email).
+* `PATCH /api/status-pages/{id}/monitors` (display options for many status page monitors at once).
+* `DELETE /api/monitors/{id}/alert-email-mute` (turn a monitor's alert email back on for an address that unsubscribed).
+* `POST /api/organization/feedback` (report a false alert, a bug or a missing feature).
+
+### Removed
+
+* `GET /api/billing/ai-usage`, `GET /api/public/stats` and `POST /api/auth/verify-email`, which are no longer in the live spec.
+
+### Changed
+
+* 14 operations are marked `x-internal` (the health check, inbound webhooks, email tracking and similar endpoints).
+* `POST /api/onboarding/start-no-card-trial` is `SessionAuth` only: it starts the 10-day trial without a card for a workspace owner who signed up with a work email.
+* Field and description updates across monitors, alerts, incidents, notification channels, status pages, billing and the free tools.
+* README: API access on every paid plan, operation counts, hosted reference at https://docs.visualsentinel.com/, and what `info.version` means.
+* `.well-known/api-catalog.json` matches the live catalog (service docs at https://docs.visualsentinel.com/).
+
 ## [2.214.52] - 2026-10-12
 
 Resync with the live spec at https://visualsentinel.com/openapi.json, which is now the source of truth (this file is a copy). 185 paths, 283 operations.
